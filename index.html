@@ -52,9 +52,11 @@ input:focus{border-color:var(--green)}
 .pick-btn.sel-home,.pick-btn.sel-away{background:var(--green);color:#fff;border-color:var(--green)}
 .group-match .pick-btn.sel-home,.group-match .pick-btn.sel-away{background:var(--blue);color:#fff;border-color:var(--blue)}
 .pick-btn[disabled],.draw-btn[disabled]{opacity:.5;cursor:not-allowed}
+.pick-btn.sel-result{outline:2.5px solid var(--gold);outline-offset:1px}
 .lock-msg{color:#c0392b;font-weight:700;padding:8px 16px}
 .draw-btn{padding:8px 4px;font-size:11px;font-weight:700;border:1.5px solid var(--border2);border-radius:var(--radius-sm);background:transparent;color:var(--text2);cursor:pointer;text-align:center;transition:all .15s}
 .draw-btn.sel-draw{background:#1c50e0;color:#fff;border-color:#666}
+.draw-btn.sel-result{background:var(--gold);color:#fff;border-color:var(--gold)}
 .prog-wrap{padding:4px 16px 8px}
 .prog-bg{height:4px;background:var(--border);border-radius:2px}
 .prog-fill{height:4px;background:var(--green);border-radius:2px;transition:width .3s}
@@ -107,9 +109,9 @@ input:focus{border-color:var(--green)}
   <div class="card" style="margin-top:16px">
     <div class="pt-rule"><span>Group stage correct pick (Choose by June 10th 10 PM)</span><span class="badge badge-green">1 pt</span></div>
     <div class="pt-rule"><span>Round of 32 correct pick (Choose by June 27th 10 PM)</span><span class="badge badge-green">2 pts</span></div>
-    <div class="pt-rule"><span>Round of 16 correct pick (Choose by July 3rd 10 PM)</span><span class="badge badge-green">2 pts</span></div>
-    <div class="pt-rule"><span>Quarterfinal correct pick (Choose by July 7th 10PM)</span><span class="badge badge-green">3 pts</span></div>
-    <div class="pt-rule"><span>Semifinal correct pick (Choose by July 13th 10 PM)</span><span class="badge badge-green">4 pts</span></div>
+    <div class="pt-rule"><span>Round of 16 correct pick (Choose by July 3rd 10 PM)</span><span class="badge badge-green">3 pts</span></div>
+    <div class="pt-rule"><span>Quarterfinal correct pick (Choose by July 7th 10PM)</span><span class="badge badge-green">4 pts</span></div>
+    <div class="pt-rule"><span>Semifinal correct pick (Choose by July 13th 10 PM)</span><span class="badge badge-green">5 pts</span></div>
     <div class="pt-rule" style="border:none"><span>Final correct pick (Choose by July 18th 10 pm)</span><span class="badge badge-gold">6 pts</span></div>
     <div class="pt-rule" style="border:none"><span>***Extra points for Your World Cup Winner Choice with Your Initial Entry*** </span></div>
     <div style="margin-top:10px;font-size:12px;color:var(--text3)">Picks hidden until first result is entered.</div>
@@ -123,17 +125,18 @@ input:focus{border-color:var(--green)}
 <!-- REGISTER -->
 <div id="s-register" class="screen">
   <div class="top-bar"><button class="back-btn" onclick="go('s-home')">Back</button><h1>Register</h1></div>
-  <div class="section-title">Your name</div>
+  <div class="section-title">Your details</div>
   <div class="card-sm" style="margin-top:0">
-    <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Full name</label>
-    <input type="text" id="reg-name" placeholder="e.g. Carlos Mendez" oninput="checkReg()">
+    <div style="margin-bottom:12px">
+      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Full name</label>
+      <input type="text" id="reg-name" placeholder="e.g. Carlos Mendez" oninput="checkReg()">
+    </div>
+    <div>
+      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Password (4+ characters)</label>
+      <input type="password" id="reg-pw" placeholder="Choose a password" oninput="checkReg()">
+    </div>
   </div>
-  <div class="section-title" style="margin-top:12px">Password</div>
-  <div class="card-sm" style="margin-top:0">
-    <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Set a password (4+ characters)</label>
-    <input type="password" id="reg-pw" placeholder="Keep this safe" oninput="checkReg()">
-  </div>
-  <div style="padding:6px 12px;font-size:12px;color:var(--text3)">You'll need both your name and password to edit picks later.</div>
+  <div style="padding:6px 12px;font-size:12px;color:var(--text3)">Use the same name and password from any device to view or edit your picks.</div>
   <div id="reg-error" style="padding:8px 12px;font-size:13px;color:#c0392b;display:none;margin-bottom:8px"></div>
   <div style="padding:12px 12px 0">
     <button class="btn btn-green" id="btn-reg" disabled onclick="doRegister()">Continue to picks</button>
@@ -210,6 +213,7 @@ input:focus{border-color:var(--green)}
 
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-auth-compat.js"></script>
 <script>
 // ── REAL 2026 WORLD CUP DATA ──────────────────────────────────
 const GROUPS = {
@@ -231,86 +235,87 @@ const GROUPS = {
 // date: 'Jun 11' etc, matchday: 1/2/3
 const SCHEDULE = [
   // Matchday 1
-  {id:'gA_0_1',group:'A',home:'Mexico',away:'South Africa',date:'Jun 11',md:1},
-  {id:'gA_2_3',group:'A',home:'South Korea',away:'Czechia',date:'Jun 11',md:1},
-  {id:'gB_0_1',group:'B',home:'Canada',away:'Bosnia-Herzegovina',date:'Jun 12',md:1},
-  {id:'gD_0_1',group:'D',home:'USA',away:'Paraguay',date:'Jun 12',md:1},
-  {id:'gD_2_3',group:'D',home:'Australia',away:'Türkiye',date:'Jun 13',md:1},
-  {id:'gB_2_3',group:'B',home:'Qatar',away:'Switzerland',date:'Jun 13',md:1},
-  {id:'gC_0_1',group:'C',home:'Brazil',away:'Morocco',date:'Jun 13',md:1},
-  {id:'gC_2_3',group:'C',home:'Haiti',away:'Scotland',date:'Jun 13',md:1},
-  {id:'gE_0_1',group:'E',home:'Germany',away:'Curaçao',date:'Jun 14',md:1},
-  {id:'gF_0_1',group:'F',home:'Netherlands',away:'Japan',date:'Jun 14',md:1},
-  {id:'gF_2_3',group:'F',home:'Sweden',away:'Tunisia',date:'Jun 14',md:1},
-  {id:'gH_0_1',group:'H',home:'Spain',away:'Cape Verde',date:'Jun 15',md:1},
-  {id:'gG_0_1',group:'G',home:'Belgium',away:'Egypt',date:'Jun 15',md:1},
-  {id:'gH_2_3',group:'H',home:'Saudi Arabia',away:'Uruguay',date:'Jun 15',md:1},
-  {id:'gG_2_3',group:'G',home:'Iran',away:'New Zealand',date:'Jun 15',md:1},
-  {id:'gI_0_1',group:'I',home:'France',away:'Senegal',date:'Jun 16',md:1},
-  {id:'gI_2_3',group:'I',home:'Iraq',away:'Norway',date:'Jun 16',md:1},
-  {id:'gJ_0_1',group:'J',home:'Argentina',away:'Algeria',date:'Jun 16',md:1},
-  {id:'gJ_2_3',group:'J',home:'Austria',away:'Jordan',date:'Jun 17',md:1},
-  {id:'gK_0_1',group:'K',home:'Portugal',away:'Congo DR',date:'Jun 17',md:1},
-  {id:'gL_0_1',group:'L',home:'England',away:'Croatia',date:'Jun 17',md:1},
-  {id:'gL_2_3',group:'L',home:'Ghana',away:'Panama',date:'Jun 17',md:1},
-  {id:'gK_2_3',group:'K',home:'Uzbekistan',away:'Colombia',date:'Jun 17',md:1},
+  {id:'gA_0_1',group:'A',home:'Mexico',away:'South Africa',date:'Jun 11',md:1,matchNumber:1},
+  {id:'gA_2_3',group:'A',home:'South Korea',away:'Czechia',date:'Jun 11',md:1,matchNumber:2},
+  {id:'gB_0_1',group:'B',home:'Canada',away:'Bosnia-Herzegovina',date:'Jun 12',md:1,matchNumber:3},
+  {id:'gD_0_1',group:'D',home:'USA',away:'Paraguay',date:'Jun 12',md:1,matchNumber:4},
+  {id:'gD_2_3',group:'D',home:'Australia',away:'Türkiye',date:'Jun 13',md:1,matchNumber:5},
+  {id:'gB_2_3',group:'B',home:'Qatar',away:'Switzerland',date:'Jun 13',md:1,matchNumber:6},
+  {id:'gC_0_1',group:'C',home:'Brazil',away:'Morocco',date:'Jun 13',md:1,matchNumber:7},
+  {id:'gC_2_3',group:'C',home:'Haiti',away:'Scotland',date:'Jun 13',md:1,matchNumber:8},
+  {id:'gE_0_1',group:'E',home:'Germany',away:'Curaçao',date:'Jun 14',md:1,matchNumber:9},
+  {id:'gE_2_3',group:'E',home:'Ivory Coast',away:'Ecuador',date:'Jun 14',md:1,matchNumber:10},
+  {id:'gF_0_1',group:'F',home:'Netherlands',away:'Japan',date:'Jun 14',md:1,matchNumber:11},
+  {id:'gF_2_3',group:'F',home:'Sweden',away:'Tunisia',date:'Jun 14',md:1,matchNumber:12},
+  {id:'gH_0_1',group:'H',home:'Spain',away:'Cape Verde',date:'Jun 15',md:1,matchNumber:13},
+  {id:'gG_0_1',group:'G',home:'Belgium',away:'Egypt',date:'Jun 15',md:1,matchNumber:14},
+  {id:'gH_2_3',group:'H',home:'Saudi Arabia',away:'Uruguay',date:'Jun 15',md:1,matchNumber:15},
+  {id:'gG_2_3',group:'G',home:'Iran',away:'New Zealand',date:'Jun 15',md:1,matchNumber:16},
+  {id:'gI_0_1',group:'I',home:'France',away:'Senegal',date:'Jun 16',md:1,matchNumber:17},
+  {id:'gI_2_3',group:'I',home:'Iraq',away:'Norway',date:'Jun 16',md:1,matchNumber:18},
+  {id:'gJ_0_1',group:'J',home:'Argentina',away:'Algeria',date:'Jun 16',md:1,matchNumber:19},
+  {id:'gJ_2_3',group:'J',home:'Austria',away:'Jordan',date:'Jun 17',md:1,matchNumber:20},
+  {id:'gK_0_1',group:'K',home:'Portugal',away:'Congo DR',date:'Jun 17',md:1,matchNumber:21},
+  {id:'gL_0_1',group:'L',home:'England',away:'Croatia',date:'Jun 17',md:1,matchNumber:22},
+  {id:'gL_2_3',group:'L',home:'Ghana',away:'Panama',date:'Jun 17',md:1,matchNumber:23},
+  {id:'gK_2_3',group:'K',home:'Uzbekistan',away:'Colombia',date:'Jun 17',md:1,matchNumber:24},
   // Matchday 2
-  {id:'gA_0_3',group:'A',home:'Czechia',away:'South Africa',date:'Jun 18',md:2},
-  {id:'gA_1_2',group:'A',home:'Mexico',away:'South Korea',date:'Jun 18',md:2},
-  {id:'gB_0_3',group:'B',home:'Switzerland',away:'Canada',date:'Jun 19',md:2},
-  {id:'gB_1_2',group:'B',home:'Bosnia-Herzegovina',away:'Qatar',date:'Jun 19',md:2},
-  {id:'gD_0_2',group:'D',home:'Türkiye',away:'Paraguay',date:'Jun 19',md:2},
-  {id:'gD_1_3',group:'D',home:'USA',away:'Australia',date:'Jun 19',md:2},
-  {id:'gC_1_2',group:'C',home:'Scotland',away:'Morocco',date:'Jun 20',md:2},
-  {id:'gC_0_3',group:'C',home:'Brazil',away:'Haiti',date:'Jun 20',md:2},
-  {id:'gF_0_2',group:'F',home:'Netherlands',away:'Sweden',date:'Jun 20',md:2},
-  {id:'gE_0_2',group:'E',home:'Germany',away:'Ivory Coast',date:'Jun 20',md:2},
-  {id:'gE_1_3',group:'E',home:'Curaçao',away:'Ecuador',date:'Jun 20',md:2},
-  {id:'gF_1_3',group:'F',home:'Tunisia',away:'Japan',date:'Jun 21',md:2},
-  {id:'gH_0_2',group:'H',home:'Spain',away:'Saudi Arabia',date:'Jun 21',md:2},
-  {id:'gG_0_2',group:'G',home:'Belgium',away:'Iran',date:'Jun 21',md:2},
-  {id:'gH_1_3',group:'H',home:'Uruguay',away:'Cape Verde',date:'Jun 21',md:2},
-  {id:'gG_1_3',group:'G',home:'New Zealand',away:'Egypt',date:'Jun 21',md:2},
-  {id:'gJ_0_2',group:'J',home:'Argentina',away:'Austria',date:'Jun 22',md:2},
-  {id:'gI_0_2',group:'I',home:'France',away:'Iraq',date:'Jun 22',md:2},
-  {id:'gI_1_3',group:'I',home:'Norway',away:'Senegal',date:'Jun 22',md:2},
-  {id:'gJ_1_3',group:'J',home:'Jordan',away:'Algeria',date:'Jun 23',md:2},
-  {id:'gK_0_2',group:'K',home:'Portugal',away:'Uzbekistan',date:'Jun 23',md:2},
-  {id:'gL_0_2',group:'L',home:'England',away:'Ghana',date:'Jun 23',md:2},
-  {id:'gL_1_3',group:'L',home:'Panama',away:'Croatia',date:'Jun 23',md:2},
-  {id:'gK_1_3',group:'K',home:'Colombia',away:'Congo DR',date:'Jun 23',md:2},
+  {id:'gA_0_3',group:'A',home:'Czechia',away:'South Africa',date:'Jun 18',md:2,matchNumber:25},
+  {id:'gA_1_2',group:'A',home:'Mexico',away:'South Korea',date:'Jun 18',md:2,matchNumber:26},
+  {id:'gB_0_3',group:'B',home:'Switzerland',away:'Canada',date:'Jun 19',md:2,matchNumber:27},
+  {id:'gB_1_2',group:'B',home:'Bosnia-Herzegovina',away:'Qatar',date:'Jun 19',md:2,matchNumber:28},
+  {id:'gD_0_2',group:'D',home:'Türkiye',away:'Paraguay',date:'Jun 19',md:2,matchNumber:29},
+  {id:'gD_1_3',group:'D',home:'USA',away:'Australia',date:'Jun 19',md:2,matchNumber:30},
+  {id:'gC_1_2',group:'C',home:'Scotland',away:'Morocco',date:'Jun 20',md:2,matchNumber:31},
+  {id:'gC_0_3',group:'C',home:'Brazil',away:'Haiti',date:'Jun 20',md:2,matchNumber:32},
+  {id:'gF_0_2',group:'F',home:'Netherlands',away:'Sweden',date:'Jun 20',md:2,matchNumber:33},
+  {id:'gE_0_2',group:'E',home:'Germany',away:'Ivory Coast',date:'Jun 20',md:2,matchNumber:34},
+  {id:'gE_1_3',group:'E',home:'Curaçao',away:'Ecuador',date:'Jun 20',md:2,matchNumber:35},
+  {id:'gF_1_3',group:'F',home:'Tunisia',away:'Japan',date:'Jun 21',md:2,matchNumber:36},
+  {id:'gH_0_2',group:'H',home:'Spain',away:'Saudi Arabia',date:'Jun 21',md:2,matchNumber:37},
+  {id:'gG_0_2',group:'G',home:'Belgium',away:'Iran',date:'Jun 21',md:2,matchNumber:38},
+  {id:'gH_1_3',group:'H',home:'Uruguay',away:'Cape Verde',date:'Jun 21',md:2,matchNumber:39},
+  {id:'gG_1_3',group:'G',home:'New Zealand',away:'Egypt',date:'Jun 21',md:2,matchNumber:40},
+  {id:'gJ_0_2',group:'J',home:'Argentina',away:'Austria',date:'Jun 22',md:2,matchNumber:41},
+  {id:'gI_0_2',group:'I',home:'France',away:'Iraq',date:'Jun 22',md:2,matchNumber:42},
+  {id:'gI_1_3',group:'I',home:'Norway',away:'Senegal',date:'Jun 22',md:2,matchNumber:43},
+  {id:'gJ_1_3',group:'J',home:'Jordan',away:'Algeria',date:'Jun 23',md:2,matchNumber:44},
+  {id:'gK_0_2',group:'K',home:'Portugal',away:'Uzbekistan',date:'Jun 23',md:2,matchNumber:45},
+  {id:'gL_0_2',group:'L',home:'England',away:'Ghana',date:'Jun 23',md:2,matchNumber:46},
+  {id:'gL_1_3',group:'L',home:'Panama',away:'Croatia',date:'Jun 23',md:2,matchNumber:47},
+  {id:'gK_1_3',group:'K',home:'Colombia',away:'Congo DR',date:'Jun 23',md:2,matchNumber:48},
   // Matchday 3 (simultaneous within group)
-  {id:'gB_0_2',group:'B',home:'Switzerland',away:'Bosnia-Herzegovina',date:'Jun 26',md:3},
-  {id:'gB_1_3',group:'B',home:'Canada',away:'Qatar',date:'Jun 26',md:3},
-  {id:'gA_0_2',group:'A',home:'Czechia',away:'Mexico',date:'Jun 26',md:3},
-  {id:'gA_1_3',group:'A',home:'South Africa',away:'South Korea',date:'Jun 26',md:3},
-  {id:'gC_0_2',group:'C',home:'Scotland',away:'Brazil',date:'Jun 27',md:3},
-  {id:'gC_1_3',group:'C',home:'Morocco',away:'Haiti',date:'Jun 27',md:3},
-  {id:'gE_0_3',group:'E',home:'Ecuador',away:'Germany',date:'Jun 27',md:3},
-  {id:'gE_1_2',group:'E',home:'Curaçao',away:'Ivory Coast',date:'Jun 27',md:3},
-  {id:'gD_0_3',group:'D',home:'Türkiye',away:'USA',date:'Jun 28',md:3},
-  {id:'gD_1_2',group:'D',home:'Paraguay',away:'Australia',date:'Jun 28',md:3},
-  {id:'gF_0_3',group:'F',home:'Tunisia',away:'Netherlands',date:'Jun 28',md:3},
-  {id:'gF_1_2',group:'F',home:'Japan',away:'Sweden',date:'Jun 28',md:3},
-  {id:'gH_0_3',group:'H',home:'Cape Verde',away:'Spain',date:'Jun 29',md:3},
-  {id:'gH_1_2',group:'H',home:'Uruguay',away:'Saudi Arabia',date:'Jun 29',md:3},
-  {id:'gG_0_3',group:'G',home:'New Zealand',away:'Belgium',date:'Jun 29',md:3},
-  {id:'gG_1_2',group:'G',home:'Egypt',away:'Iran',date:'Jun 29',md:3},
-  {id:'gI_0_3',group:'I',home:'Iraq',away:'France',date:'Jun 30',md:3},
-  {id:'gI_1_2',group:'I',home:'Senegal',away:'Norway',date:'Jun 30',md:3},
-  {id:'gJ_0_3',group:'J',home:'Algeria',away:'Argentina',date:'Jun 30',md:3},
-  {id:'gJ_1_2',group:'J',home:'Jordan',away:'Austria',date:'Jun 30',md:3},
-  {id:'gK_0_3',group:'K',home:'Colombia',away:'Portugal',date:'Jul 1',md:3},
-  {id:'gK_1_2',group:'K',home:'Congo DR',away:'Uzbekistan',date:'Jul 1',md:3},
-  {id:'gL_0_3',group:'L',home:'Panama',away:'England',date:'Jul 1',md:3},
-  {id:'gL_1_2',group:'L',home:'Croatia',away:'Ghana',date:'Jul 1',md:3},
+  {id:'gB_0_2',group:'B',home:'Switzerland',away:'Bosnia-Herzegovina',date:'Jun 26',md:3,matchNumber:49},
+  {id:'gB_1_3',group:'B',home:'Canada',away:'Qatar',date:'Jun 26',md:3,matchNumber:50},
+  {id:'gA_0_2',group:'A',home:'Czechia',away:'Mexico',date:'Jun 26',md:3,matchNumber:51},
+  {id:'gA_1_3',group:'A',home:'South Africa',away:'South Korea',date:'Jun 26',md:3,matchNumber:52},
+  {id:'gC_0_2',group:'C',home:'Scotland',away:'Brazil',date:'Jun 27',md:3,matchNumber:53},
+  {id:'gC_1_3',group:'C',home:'Morocco',away:'Haiti',date:'Jun 27',md:3,matchNumber:54},
+  {id:'gE_0_3',group:'E',home:'Ecuador',away:'Germany',date:'Jun 27',md:3,matchNumber:55},
+  {id:'gE_1_2',group:'E',home:'Curaçao',away:'Ivory Coast',date:'Jun 27',md:3,matchNumber:56},
+  {id:'gD_0_3',group:'D',home:'Türkiye',away:'USA',date:'Jun 28',md:3,matchNumber:57},
+  {id:'gD_1_2',group:'D',home:'Paraguay',away:'Australia',date:'Jun 28',md:3,matchNumber:58},
+  {id:'gF_0_3',group:'F',home:'Tunisia',away:'Netherlands',date:'Jun 28',md:3,matchNumber:59},
+  {id:'gF_1_2',group:'F',home:'Japan',away:'Sweden',date:'Jun 28',md:3,matchNumber:60},
+  {id:'gH_0_3',group:'H',home:'Cape Verde',away:'Spain',date:'Jun 29',md:3,matchNumber:61},
+  {id:'gH_1_2',group:'H',home:'Uruguay',away:'Saudi Arabia',date:'Jun 29',md:3,matchNumber:62},
+  {id:'gG_0_3',group:'G',home:'New Zealand',away:'Belgium',date:'Jun 29',md:3,matchNumber:63},
+  {id:'gG_1_2',group:'G',home:'Egypt',away:'Iran',date:'Jun 29',md:3,matchNumber:64},
+  {id:'gI_0_3',group:'I',home:'Iraq',away:'France',date:'Jun 30',md:3,matchNumber:65},
+  {id:'gI_1_2',group:'I',home:'Senegal',away:'Norway',date:'Jun 30',md:3,matchNumber:66},
+  {id:'gJ_0_3',group:'J',home:'Algeria',away:'Argentina',date:'Jun 30',md:3,matchNumber:67},
+  {id:'gJ_1_2',group:'J',home:'Jordan',away:'Austria',date:'Jun 30',md:3,matchNumber:68},
+  {id:'gK_0_3',group:'K',home:'Colombia',away:'Portugal',date:'Jul 1',md:3,matchNumber:69},
+  {id:'gK_1_2',group:'K',home:'Congo DR',away:'Uzbekistan',date:'Jul 1',md:3,matchNumber:70},
+  {id:'gL_0_3',group:'L',home:'Panama',away:'England',date:'Jul 1',md:3,matchNumber:71},
+  {id:'gL_1_2',group:'L',home:'Croatia',away:'Ghana',date:'Jul 1',md:3,matchNumber:72},
 ];
 
 const KO_ROUNDS=[
   {id:'r32',label:'Rd of 32',pts:2,count:16},
   {id:'r16',label:'Rd of 16',pts:3,count:8},
-  {id:'qf',label:'Quarters',pts:4,count:8},
-  {id:'sf',label:'Semis',pts:5,count:4},
+  {id:'qf',label:'Quarters',pts:4,count:4},
+  {id:'sf',label:'Semis',pts:5,count:2},
   {id:'final',label:'Final',pts:6,count:1}
 ];
 const ROUND_PTS={group:1,r32:2,r16:3,qf:4,sf:5,final:6};
@@ -325,30 +330,42 @@ const AVATAR_COLORS=[['#e8f5ee','#1a7a4a'],['#e6f1fb','#185fa5'],['#faeeda','#85
 function buildKOMatches(slots){
   const ms=[],s=slots||{};
   const get=k=>s[k]||null;
-  for(let i=0;i<16;i++) ms.push({id:`r32_${i}`,round:'r32',home:get(`r32_${i}_a`)||`R32 ${i+1}A`,away:get(`r32_${i}_b`)||`R32 ${i+1}B`,allowDraw:false});
-  for(let i=0;i<8;i++)  ms.push({id:`r16_${i}`,round:'r16',home:get(`r16_${i}_a`)||`R16 ${i+1}A`,away:get(`r16_${i}_b`)||`R16 ${i+1}B`,allowDraw:false});
-  for(let i=0;i<8;i++)  ms.push({id:`qf_${i}`, round:'qf', home:get(`qf_${i}_a`) ||`QF ${i+1}A`,  away:get(`qf_${i}_b`) ||`QF ${i+1}B`,allowDraw:false});
-  for(let i=0;i<4;i++)  ms.push({id:`sf_${i}`, round:'sf', home:get(`sf_${i}_a`) ||`SF ${i+1}A`,  away:get(`sf_${i}_b`) ||`SF ${i+1}B`,allowDraw:false});
-  ms.push({id:'final_0',round:'final',home:get('final_a')||'Finalist A',away:get('final_b')||'Finalist B',allowDraw:false});
+  // R32: matches 73-88
+  for(let i=0;i<16;i++) ms.push({id:`r32_${i}`,round:'r32',matchNumber:73+i,home:get(`r32_${i}_a`)||`R32 ${i+1}A`,away:get(`r32_${i}_b`)||`R32 ${i+1}B`,allowDraw:false});
+  // R16: matches 89-96 (order matches FIFA bracket)
+  const r16Numbers=[89,90,91,92,93,94,95,96];
+  for(let i=0;i<8;i++)  ms.push({id:`r16_${i}`,round:'r16',matchNumber:r16Numbers[i],home:get(`r16_${i}_a`)||`R16 ${i+1}A`,away:get(`r16_${i}_b`)||`R16 ${i+1}B`,allowDraw:false});
+  // QF: matches 97-100
+  const qfNumbers=[97,98,99,100];
+  for(let i=0;i<4;i++)  ms.push({id:`qf_${i}`, round:'qf', matchNumber:qfNumbers[i], home:get(`qf_${i}_a`)||`QF ${i+1}A`,  away:get(`qf_${i}_b`)||`QF ${i+1}B`, allowDraw:false});
+  // SF: matches 101-102
+  const sfNumbers=[101,102];
+  for(let i=0;i<2;i++)  ms.push({id:`sf_${i}`, round:'sf', matchNumber:sfNumbers[i], home:get(`sf_${i}_a`)||`SF ${i+1}A`,  away:get(`sf_${i}_b`)||`SF ${i+1}B`, allowDraw:false});
+  // Final: match 104
+  ms.push({id:'final_0',round:'final',matchNumber:104,home:get('final_0_a')||'Finalist A',away:get('final_0_b')||'Finalist B',allowDraw:false});
   return ms;
 }
 
 // ── STATE ─────────────────────────────────────────────────────
-let db,currentUser=null,myPicks={},activeRound='group',allMatches=[],lbUnsub=null,locks={},results={},koSlots={},koBuilt=false;
+let db,auth,currentUser=null,myPicks={},activeRound='group',allMatches=[],lbUnsub=null,locks={},results={},koSlots={},koBuilt=false;
 
 firebase.initializeApp(firebaseConfig);
 db=firebase.database();
+auth=firebase.auth();
 function dbRef(p){return db.ref('wc2026/'+p);}
 async function dbGet(p){try{const s=await dbRef(p).get();return s.exists()?s.val():null;}catch(e){return null;}}
 async function dbSet(p,v){await dbRef(p).set(v);}
+
+// Sign in anonymously — transparent to user, gives each device a unique UID
+auth.signInAnonymously().catch(e=>console.error('Auth error:',e));
 
 function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);if(id==='s-leaderboard') loadLeaderboard();if(id==='s-admin') adminPopulateMatches();}
 function toast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 function safeId(s){return s.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'_');}
 
 async function loadLeaderboard(){
-  const players=await dbGet('players')||{};
-  const arr=Object.entries(players).map(([uid,p])=>({uid,name:p.name||'Unknown',score:p.score||0,pickCount:p.picks?Object.keys(p.picks).length:0})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
+  const entries=await dbGet('leaderboard')||{};
+  const arr=Object.entries(entries).map(([uid,p])=>({uid,name:p.name||'Unknown',score:p.score||0})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
   document.getElementById('leaderboard-summary').innerHTML=`<div class="card-sm" style="margin-top:0;text-align:center"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Players</div><div style="font-size:20px;font-weight:700">${arr.length}</div></div><div class="card-sm" style="margin-top:0;text-align:center"><div style="font-size:11px;color:var(--text3);margin-bottom:4px">Top score</div><div style="font-size:20px;font-weight:700">${arr.length?arr[0].score:0} pts</div></div>`;
   const body=document.getElementById('leaderboard-body');
   if(arr.length===0){
@@ -358,7 +375,7 @@ async function loadLeaderboard(){
   body.innerHTML=arr.map((p,i)=>{
     const colors=AVATAR_COLORS[i%AVATAR_COLORS.length];
     const initials=p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    return `<div class="leaderboard-row"><div class="leaderboard-rank">${i+1}</div><div class="avatar" style="background:${colors[0]};color:${colors[1]}">${initials}</div><div style="flex:1"><div style="font-size:14px;font-weight:700">${p.name}</div><div style="font-size:12px;color:var(--text3)">${p.pickCount} picks</div></div><div style="font-size:14px;font-weight:700;color:var(--green)">${p.score} pts</div></div>`;
+    return `<div class="leaderboard-row"><div class="leaderboard-rank">${i+1}</div><div class="avatar" style="background:${colors[0]};color:${colors[1]}">${initials}</div><div style="flex:1"><div style="font-size:14px;font-weight:700">${p.name}</div></div><div style="font-size:14px;font-weight:700;color:var(--green)">${p.score} pts</div></div>`;
   }).join('');
 }
 
@@ -375,46 +392,73 @@ async function doRegister(){
   btn.innerHTML='<span class="spinner"></span>Loading...';btn.disabled=true;
   const name=document.getElementById('reg-name').value.trim();
   const pw=document.getElementById('reg-pw').value;
-  currentUser={name,uid:safeId(name),pw};
+  // Wait for anonymous auth to be ready (gives us Firebase auth context for security rules)
+  if(!auth.currentUser){
+    await new Promise(resolve=>{const unsub=auth.onAuthStateChanged(u=>{if(u){unsub();resolve();}});});
+  }
+  // Use name-based key so player can log in from any device with name+password
+  const uid=safeId(name);
+  currentUser={name,uid,pw};
   try{
-    const existing=await dbGet('players/'+currentUser.uid);
+    const existing=await dbGet('playerPicks/'+uid);
     if(existing){
-      if(existing.pw!==pw){errEl.textContent='Wrong password for this name.';errEl.style.display='block';btn.textContent='Continue to picks';btn.disabled=false;return;}
+      // Player exists — verify password
+      if(existing.pw!==pw){
+        errEl.textContent='Name or pwd is incorrect. Try again or contact support';
+        errEl.style.display='block';
+        btn.textContent='Continue to picks';
+        btn.disabled=false;
+        return;
+      }
       myPicks={...existing.picks};
     } else {
+      // New player — only allowed if group stage entry is NOT locked
+      const lockState=await dbGet('locks')||{};
+      if(lockState['group']){
+        errEl.textContent='Name or pwd is incorrect. Try again or contact support';
+        errEl.style.display='block';
+        btn.textContent='Continue to picks';
+        btn.disabled=false;
+        return;
+      }
+      // Set up default picks for genuinely new player
       myPicks={};SCHEDULE.forEach(m=>{myPicks[m.id]='Draw';});myPicks['wc_winner']='';
     }
     koSlots=await dbGet('koSlots')||{};
-    koBuilt=Object.keys(koSlots).length>0;
+    koBuilt=await dbGet('r32Built')||false;
     locks=await dbGet('locks')||{};
     results=await dbGet('results')||{};
     allMatches=[...SCHEDULE.map(m=>({...m,round:'group',allowDraw:true}))];
     if(koBuilt) allMatches.push(...buildKOMatches(koSlots));
-    document.getElementById('picks-title').textContent=name.split(' ')[0]+'\"s Picks';
+    document.getElementById('picks-title').textContent=name.split(' ')[0]+'"s Picks';
     renderRoundTabs();renderPicksForRound('group');
     go('s-picks');
-    // listen for lock changes
     dbRef('locks').on('value',snap=>{locks=snap.val()||{};renderPicksForRound(activeRound);});
-    // listen for result changes
     dbRef('results').on('value',snap=>{results=snap.val()||{};renderPicksForRound(activeRound);});
-    // listen for KO bracket builds
     dbRef('koSlots').on('value',snap=>{
       koSlots=snap.val()||{};
-      koBuilt=Object.keys(koSlots).length>0;
       allMatches=[...SCHEDULE.map(m=>({...m,round:'group',allowDraw:true}))];
       if(koBuilt) allMatches.push(...buildKOMatches(koSlots));
+      if(!koBuilt&&activeRound!=='group') activeRound='group';
+      renderRoundTabs();renderPicksForRound(activeRound);
+    });
+    dbRef('r32Built').on('value',snap=>{
+      koBuilt=snap.val()||false;
+      allMatches=[...SCHEDULE.map(m=>({...m,round:'group',allowDraw:true}))];
+      if(koBuilt) allMatches.push(...buildKOMatches(koSlots));
+      if(!koBuilt&&activeRound!=='group') activeRound='group';
       renderRoundTabs();renderPicksForRound(activeRound);
     });
   }catch(e){toast('Error loading. Check connection.');}
   btn.textContent='Continue to picks';btn.disabled=false;
 }
-
 function groupDone(){return SCHEDULE.every(m=>myPicks[m.id]);}
 
 function renderRoundTabs(){
-  const rounds=['group',...KO_ROUNDS.map(r=>r.id)];
   const labels={group:'Groups',r32:'Rd of 32',r16:'Rd of 16',qf:'Quarters',sf:'Semis',final:'Final'};
-  const koUnlocked=koBuilt && groupDone();
+  // Only show KO tabs after admin has built the bracket
+  const rounds = koBuilt ? ['group',...KO_ROUNDS.map(r=>r.id)] : ['group'];
+  const koUnlocked = koBuilt && groupDone();
   const unlocked={group:true,r32:koUnlocked,r16:koUnlocked,qf:koUnlocked,sf:koUnlocked,final:koUnlocked};
   document.getElementById('round-tabs').innerHTML=rounds.map(r=>`
     <button class="tab${r===activeRound?' active':''}" onclick="switchRound('${r}')"
@@ -505,7 +549,10 @@ function renderPicksForRound(r){
     if(grpStatus){ html+=`<div class="lock-msg">Pick entries ${grpStatus}</div>`; }
     Object.entries(byDate).forEach(([date,matches])=>{
       html+=`<div class="date-header">📅 ${date}</div>`;
-      matches.forEach(m=>{html+=matchHTML(m);});
+      matches.forEach(m=>{
+        html+=`<div style="font-size:11px;color:var(--text3);padding:6px 16px">Match ${m.matchNumber}${m.group?` · Group ${m.group} · MD${m.md}`:''}</div>`;
+        html+=matchHTML(m);
+      });
     });
   } else {
     const matches=allMatches.filter(m=>m.round===r);
@@ -515,8 +562,8 @@ function renderPicksForRound(r){
     if(!ready){
       html+='<div style="padding:24px 16px;text-align:center;font-size:14px;color:var(--text3)">Teams TBD — check back after previous round</div>';
     } else {
-      matches.forEach((m,i)=>{
-        html+=`<div style="font-size:11px;color:var(--text3);padding:10px 16px 2px">Match ${i+1}</div>`;
+      matches.forEach((m)=>{
+        html+=`<div style="font-size:11px;color:var(--text3);padding:10px 16px 2px">Match ${m.matchNumber}</div>`;
         html+=matchHTML(m);
       });
     }
@@ -532,19 +579,29 @@ function matchHTML(m){
   const locked = !!locks[stage];
   const hE=m.home.replace(/"/g,'&quot;'),aE=m.away.replace(/"/g,'&quot;');
   const allowDraw = m.allowDraw !== false;
-  const drawControl = allowDraw
-    ? `<button class="draw-btn${p==='Draw'?' sel-draw':''}" ${locked? 'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","Draw")'>Draw</button>`
-    : '<div></div>';
   const r=results[m.id];
-  const resultHTML = r ? `<div style="margin-top:8px;padding:8px 12px;background:var(--gold-light);border-radius:var(--radius-sm);border:1px solid #e8d49a;font-size:12px">
-    <div style="font-weight:700;color:#8a6010;margin-bottom:3px">Result: ${r} ${p?`      Your pick: ${p}`:''}</div>
+
+  // sel-result highlights the ACTUAL result button in gold
+  // sel-home/away/draw highlights the PLAYER'S PICK in blue
+  const homeClasses = `pick-btn${p===m.home?' sel-home':''}${r===m.home?' sel-result':''}`;
+  const awayClasses = `pick-btn${p===m.away?' sel-away':''}${r===m.away?' sel-result':''}`;
+  const drawClasses = `draw-btn${p==='Draw'?' sel-draw':''}${r==='Draw'?' sel-result':''}`;
+
+  const drawControl = allowDraw
+    ? `<button class="${drawClasses}" ${locked?'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","Draw")'>Draw</button>`
+    : '<div></div>';
+
+  const correct = r && p && r===p;
+  const resultHTML = r ? `<div style="margin-top:8px;padding:8px 12px;background:${correct?'#e8f5ee':'var(--gold-light)'};border-radius:var(--radius-sm);border:1px solid ${correct?'#a3d9b1':'#e8d49a'};font-size:12px">
+    <div style="font-weight:700;color:${correct?'var(--green)':'#8a6010'};margin-bottom:3px">Result: ${r===m.home?m.home:r===m.away?m.away:'Draw'} &nbsp;·&nbsp; Your pick: ${p||'—'} &nbsp;${correct?'✅':'❌'}</div>
   </div>` : '';
+
   return`<div class="card-sm${isGroup?' group-match':''}">
     ${isGroup?`<div class="match-meta">Group ${m.group} · MD${m.md}</div>`:''}
     <div class="match-row">
-      <button class="pick-btn${p===m.home?' sel-home':''}" ${locked? 'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","${hE}")'>${m.home}</button>
+      <button class="${homeClasses}" ${locked?'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","${hE}")'>${m.home}</button>
       ${drawControl}
-      <button class="pick-btn${p===m.away?' sel-away':''}" ${locked? 'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","${aE}")'>${m.away}</button>
+      <button class="${awayClasses}" ${locked?'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","${aE}")'>${m.away}</button>
     </div>
     ${resultHTML}
   </div>`;
@@ -591,7 +648,10 @@ async function submitPicks(){
     let score=0;
     allMatches.forEach(m=>{const r=results[m.id];if(r&&myPicks[m.id]===r)score+=ROUND_PTS[m.round]||1;});
     if(myPicks['wc_winner']&&results['wc_winner']===myPicks['wc_winner'])score+=getWCWinnerPts(myPicks['wc_winner']);
-    await dbSet('players/'+currentUser.uid,{name:currentUser.name,pw:currentUser.pw,picks:{...myPicks},score,updatedAt:Date.now()});
+    // Write public data (name + score) to leaderboard — readable by everyone
+    await dbSet('leaderboard/'+currentUser.uid,{name:currentUser.name,score,updatedAt:Date.now()});
+    // Store pw with picks so player can log in from any device
+    await dbSet('playerPicks/'+currentUser.uid,{pw:currentUser.pw,picks:{...myPicks},updatedAt:Date.now()});
     document.getElementById('confirm-msg').textContent=`${currentUser.name}, you've saved ${Object.keys(myPicks).length} picks. Scores update live — good luck!`;
     go('s-confirm');
   }catch(e){toast('Save failed — check connection');}
@@ -648,7 +708,10 @@ async function buildKOStage(){
         let score=0;
         SCHEDULE.forEach(m=>{if(results[m.id]&&newPicks[m.id]===results[m.id])score+=1;});
         if(newPicks['wc_winner']&&results['wc_winner']===newPicks['wc_winner'])score+=getWCWinnerPts(newPicks['wc_winner']);
-        await dbSet('players/'+uid,{...p,picks:newPicks,score,updatedAt:Date.now()});
+        await Promise.all([
+          dbSet('leaderboard/'+uid,{name:p.name,score,updatedAt:Date.now()}),
+          dbSet('playerPicks/'+uid,{picks:newPicks,updatedAt:Date.now()})
+        ]);
       }
     }
     
@@ -762,14 +825,15 @@ async function adminSaveResult(){
     setTimeout(()=>{msg.style.display='none';},2500);
     
     // Recalculate all scores
-    const players=await dbGet('players')||{};
-    for(const uid in players){
-      const p=players[uid];
-      if(p.picks){
+    const leaderboard=await dbGet('leaderboard')||{};
+    const playerPicksData=await dbGet('playerPicks')||{};
+    for(const uid in leaderboard){
+      const p=playerPicksData[uid];
+      if(p&&p.picks){
         let score=0;
         allMatches.forEach(m=>{const r=results[m.id];if(r&&p.picks[m.id]===r)score+=ROUND_PTS[m.round]||1;});
         if(p.picks['wc_winner']&&results['wc_winner']===p.picks['wc_winner'])score+=getWCWinnerPts(p.picks['wc_winner']);
-        await dbSet('players/'+uid+'/score',score);
+        await dbSet('leaderboard/'+uid+'/score',score);
       }
     }
   }catch(e){
