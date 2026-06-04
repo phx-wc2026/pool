@@ -121,7 +121,7 @@ input:focus{border-color:var(--green)}
   </div>
   <div style="padding:16px 12px 0;display:flex;flex-direction:column;gap:8px">
     <button class="btn btn-green" onclick="go('s-register')">Enter my picks</button>
-    <button class="btn btn-outline" onclick="go('s-leaderboard')">View leaderboard</button>
+    <button class="btn btn-outline" onclick="openLeaderboardFrom('s-home')">View leaderboard</button>
   </div>
 </div>
 
@@ -131,8 +131,8 @@ input:focus{border-color:var(--green)}
   <div class="section-title">Your details</div>
   <div class="card-sm" style="margin-top:0">
     <div style="margin-bottom:12px">
-      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Full name</label>
-      <input type="text" id="reg-name" placeholder="e.g. Carlos Mendez" oninput="checkReg()">
+      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Name</label>
+      <input type="text" id="reg-name" placeholder="e.g. Amitabh " oninput="checkReg()">
     </div>
     <div>
       <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Password (4+ characters)</label>
@@ -148,7 +148,7 @@ input:focus{border-color:var(--green)}
 
 <!-- PICKS -->
 <div id="s-picks" class="screen">
-  <div class="top-bar"><button class="back-btn" onclick="go('s-home')">Home</button><h1 id="picks-title">My Picks</h1></div>
+  <div class="top-bar"><button class="back-btn" onclick="go('s-home')">Home</button><h1 id="picks-title" style="flex:1">My Picks</h1><button class="back-btn" onclick="openLeaderboardFrom('s-picks')">Leaderboard</button></div>
   <div class="prog-wrap">
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text3);margin-bottom:4px">
       <span id="prog-label">0 / 0 picked</span><span id="prog-pct">0%</span>
@@ -165,7 +165,7 @@ input:focus{border-color:var(--green)}
 
 <!-- LEADERBOARD -->
 <div id="s-leaderboard" class="screen">
-  <div class="top-bar"><button class="back-btn" onclick="go('s-home')">Back</button><h1>Leaderboard</h1></div>
+  <div class="top-bar"><button class="back-btn" id="lb-back-btn" onclick="go('s-home')">Back</button><h1>Leaderboard</h1></div>
   <div class="section-title">Top entries</div>
   <div id="leaderboard-summary" class="leaderboard-summary" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px 8px"></div>
   <div id="leaderboard-body"></div>
@@ -363,6 +363,13 @@ async function dbSet(p,v){await dbRef(p).set(v);}
 auth.signInAnonymously().catch(e=>console.error('Auth error:',e));
 
 function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);if(id==='s-leaderboard') loadLeaderboard();if(id==='s-admin') adminPopulateMatches();}
+
+// Open leaderboard and remember where to return when Back is pressed
+function openLeaderboardFrom(origin){
+  const backBtn=document.getElementById('lb-back-btn');
+  if(backBtn) backBtn.setAttribute('onclick',`go('${origin}')`);
+  go('s-leaderboard');
+}
 function toast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 function safeId(s){return s.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'_');}
 
