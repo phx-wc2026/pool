@@ -131,8 +131,8 @@ input:focus{border-color:var(--green)}
   <div class="section-title">Your details</div>
   <div class="card-sm" style="margin-top:0">
     <div style="margin-bottom:12px">
-      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Name</label>
-      <input type="text" id="reg-name" placeholder="e.g. Amitabh " oninput="checkReg()">
+      <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Full name</label>
+      <input type="text" id="reg-name" placeholder="e.g. Carlos Mendez" oninput="checkReg()">
     </div>
     <div>
       <label style="font-size:13px;color:var(--text2);display:block;margin-bottom:4px">Password (4+ characters)</label>
@@ -328,6 +328,34 @@ function getWCWinnerPts(team){
   const t=team.trim();
   return WC_WINNER_ODDS[t]||20;
 }
+const FLAGS={
+  // Group A
+  'Mexico':'🇲🇽','South Africa':'🇿🇦','South Korea':'🇰🇷','Czechia':'🇨🇿',
+  // Group B
+  'Canada':'🇨🇦','Bosnia-Herzegovina':'🇧🇦','Qatar':'🇶🇦','Switzerland':'🇨🇭',
+  // Group C
+  'Brazil':'🇧🇷','Morocco':'🇲🇦','Haiti':'🇭🇹','Scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  // Group D
+  'USA':'🇺🇸','Paraguay':'🇵🇾','Australia':'🇦🇺','Türkiye':'🇹🇷',
+  // Group E
+  'Germany':'🇩🇪','Curaçao':'🇨🇼','Ivory Coast':'🇨🇮','Ecuador':'🇪🇨',
+  // Group F
+  'Netherlands':'🇳🇱','Japan':'🇯🇵','Sweden':'🇸🇪','Tunisia':'🇹🇳',
+  // Group G
+  'Belgium':'🇧🇪','Egypt':'🇪🇬','Iran':'🇮🇷','New Zealand':'🇳🇿',
+  // Group H
+  'Spain':'🇪🇸','Cape Verde':'🇨🇻','Saudi Arabia':'🇸🇦','Uruguay':'🇺🇾',
+  // Group I
+  'France':'🇫🇷','Senegal':'🇸🇳','Iraq':'🇮🇶','Norway':'🇳🇴',
+  // Group J
+  'Argentina':'🇦🇷','Algeria':'🇩🇿','Austria':'🇦🇹','Jordan':'🇯🇴',
+  // Group K
+  'Portugal':'🇵🇹','Congo DR':'🇨🇩','Uzbekistan':'🇺🇿','Colombia':'🇨🇴',
+  // Group L
+  'England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Croatia':'🇭🇷','Ghana':'🇬🇭','Panama':'🇵🇦',
+};
+function flag(team){return FLAGS[team]?`<span style="font-size:18px;vertical-align:middle;margin-right:3px">${FLAGS[team]}</span>`:'';}
+
 const AVATAR_COLORS=[['#e8f5ee','#1a7a4a'],['#e6f1fb','#185fa5'],['#faeeda','#854f0b'],['#fbeaf0','#993556'],['#eeedfe','#534ab7'],['#eaf3de','#3b6d11']];
 
 function buildKOMatches(slots){
@@ -603,15 +631,15 @@ function matchHTML(m){
 
   const correct = r && p && r===p;
   const resultHTML = r ? `<div style="margin-top:8px;padding:8px 12px;background:${correct?'#e8f5ee':'var(--gold-light)'};border-radius:var(--radius-sm);border:1px solid ${correct?'#a3d9b1':'#e8d49a'};font-size:12px">
-    <div style="font-weight:700;color:${correct?'var(--green)':'#8a6010'};margin-bottom:3px">Result: ${r===m.home?m.home:r===m.away?m.away:'Draw'} &nbsp;·&nbsp; Your pick: ${p||'—'} &nbsp;${correct?'✅':'❌'}</div>
+    <div style="font-weight:700;color:${correct?'var(--green)':'#8a6010'};margin-bottom:3px">Result: ${r==='Draw'?'Draw':`${flag(r===m.home?m.home:m.away)}${r===m.home?m.home:m.away}`} &nbsp;·&nbsp; Your pick: ${p?(p==='Draw'?'Draw':`${flag(p)}${p}`):'—'} &nbsp;${correct?'✅':'❌'}</div>
   </div>` : '';
 
   return`<div class="card-sm${isGroup?' group-match':''}">
     ${isGroup?`<div class="match-meta">Group ${m.group} · MD${m.md}</div>`:''}
     <div class="match-row">
-      <button class="${homeClasses}" ${locked?'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","${hE}")'>${m.home}</button>
+      <button class="${homeClasses}" ${locked?'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","${hE}")'>${flag(m.home)}${m.home}</button>
       ${drawControl}
-      <button class="${awayClasses}" ${locked?'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","${aE}")'>${m.away}</button>
+      <button class="${awayClasses}" ${locked?'disabled title="Picks locked for this stage"':''} onclick='doPick("${m.id}","${aE}")'>${flag(m.away)}${m.away}</button>
     </div>
     ${resultHTML}
   </div>`;
