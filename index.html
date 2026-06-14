@@ -171,6 +171,11 @@ input:focus{border-color:var(--green)}
   <div id="leaderboard-body"></div>
 </div>
 
+<div id="s-player-detail" class="screen">
+  <div class="top-bar"><button class="back-btn" onclick="go('s-leaderboard')">Leaderboard</button><h1 id="pd-title">Player Picks</h1></div>
+  <div id="pd-body" style="padding-bottom:20px"></div>
+</div>
+
 <!-- CONFIRM -->
 <div id="s-confirm" class="screen">
   <div style="padding:40px 20px;text-align:center">
@@ -413,8 +418,88 @@ async function loadLeaderboard(){
   body.innerHTML=arr.map((p,i)=>{
     const colors=AVATAR_COLORS[i%AVATAR_COLORS.length];
     const initials=p.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    return `<div class="leaderboard-row"><div class="leaderboard-rank">${i+1}</div><div class="avatar" style="background:${colors[0]};color:${colors[1]}">${initials}</div><div style="flex:1"><div style="font-size:14px;font-weight:700">${p.name}</div></div><div style="font-size:14px;font-weight:700;color:var(--green)">${p.score} pts</div></div>`;
+    return `<div class="leaderboard-row" onclick="viewPlayerDetail('${p.uid}','${p.name.replace(/'/g,"\\'")}',${i+1})" style="cursor:pointer;transition:background .12s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background=''">\
+<div class="leaderboard-rank">${i+1}</div>\
+<div class="avatar" style="background:${colors[0]};color:${colors[1]}">${initials}</div>\
+<div style="flex:1"><div style="font-size:14px;font-weight:700">${p.name}</div><div style="font-size:11px;color:var(--text3)">Tap to see picks</div></div>\
+<div style="font-size:14px;font-weight:700;color:var(--green)">${p.score} pts</div>\
+<div style="color:var(--text3);font-size:16px;margin-left:4px">›</div></div>`;
   }).join('');
+}
+
+async function viewPlayerDetail(uid,name,rank){
+  document.getElementById('pd-title').textContent=name;
+  document.getElementById('pd-body').innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)"><span class="spinner"></span> Loading…</div>';
+  go('s-player-detail');
+  try{
+    const [ppData,resultsData,leaderboard]=await Promise.all([
+      dbGet('playerPicks/'+uid),
+      dbGet('results'),
+      dbGet('leaderboard/'+uid)
+    ]);
+    const picks=(ppData?.picks)||{};
+    const results=resultsData||{};
+    const score=leaderboard?.score||0;
+    // Build all matches
+    const allM=[...SCHEDULE.map(m=>({...m,round:'group'})),...buildKOMatches(koSlots||{})];
+    const STAGE_LABELS={group:'Group',r32:'Rd of 32',r16:'Rd of 16',qf:'Quarters',sf:'Semis',final:'Final'};
+    const ROUND_PTS_MAP={group:1,r32:2,r16:3,qf:4,sf:5,final:6};
+    // Group by stage
+    const stages=['group','r32','r16','qf','sf','final'];
+    let html=`<div class="card" style="margin:12px 12px 0;background:var(--green-light);border-color:#a3d9b1">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:28px;font-weight:700;color:var(--green)">#${rank}</div>
+        <div><div style="font-size:16px;font-weight:700">${name}</div>
+        <div style="font-size:13px;color:var(--text2)">${score} pts total</div></div>
+      </div></div>`;
+    stages.forEach(stage=>{
+      const stageMatches=allM.filter(m=>(m.round||'group')===stage);
+      const stagePicks=stageMatches.filter(m=>picks[m.id]);
+      if(!stagePicks.length) return;
+      const pts_per=ROUND_PTS_MAP[stage]||1;
+      const correct=stagePicks.filter(m=>results[m.id]&&picks[m.id]===results[m.id]).length;
+      const total=stagePicks.filter(m=>results[m.id]).length;
+      html+=`<div class="section-title" style="padding:12px 12px 4px">${STAGE_LABELS[stage]||stage} <span style="font-size:11px;color:var(--text3);font-weight:400">${pts_per} pt${pts_per>1?'s':''} each · ${correct}/${total} correct</span></div>`;
+      stageMatches.forEach(m=>{
+        const pick=picks[m.id];
+        const result=results[m.id];
+        const correct_pick=result&&pick===result;
+        const wrong_pick=result&&pick&&pick!==result;
+        if(!pick) return;
+        const hFlag=FLAGS[m.home]||'';const aFlag=FLAGS[m.away]||'';
+        const isHome=pick===m.home;const isAway=pick===m.away;const isDraw=pick==='Draw';
+        let bg='var(--surface)';let border='var(--border)';
+        if(correct_pick){bg='var(--green-light)';border='#a3d9b1';}
+        else if(wrong_pick){bg='var(--gold-light)';border='#e8d49a';}
+        html+=`<div class="card" style="margin:4px 12px;background:${bg};border-color:${border};padding:10px 14px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Match ${m.matchNumber} · Group ${m.group||''} </div>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span style="font-size:13px;${isHome?'font-weight:700;color:var(--blue)':''}">${hFlag?`<span style="font-size:14px">${hFlag}</span> `:''}${m.home}</span>
+            <span style="color:var(--text3);font-size:12px">vs</span>
+            <span style="font-size:13px;${isAway?'font-weight:700;color:var(--blue)':''}">${aFlag?`<span style="font-size:14px">${aFlag}</span> `:''}${m.away}</span>
+            <span style="margin-left:auto;font-size:12px;font-weight:700;${isDraw?'color:var(--blue)':''}">
+              Pick: ${isDraw?'Draw':pick}
+            </span>
+            ${result?`<span>${correct_pick?'✅':'❌'}</span>`:''}
+          </div>
+          ${result?`<div style="font-size:11px;color:var(--text3);margin-top:4px">Result: ${result}${correct_pick?' · +'+pts_per+' pt'+(pts_per>1?'s':''):''}</div>`:''}
+        </div>`;
+      });
+    });
+    // WC Winner
+    if(picks['wc_winner']){
+      const wcResult=results['wc_winner'];
+      const wcCorrect=wcResult&&picks['wc_winner']===wcResult;
+      html+=`<div class="section-title" style="padding:12px 12px 4px">🏆 WC Winner Pick</div>
+      <div class="card" style="margin:4px 12px;background:${wcCorrect?'var(--green-light)':'var(--surface)'};border-color:${wcCorrect?'#a3d9b1':'var(--border)'}">
+        <div style="font-size:14px;font-weight:700">${picks['wc_winner']}</div>
+        ${wcResult?`<div style="font-size:12px;color:var(--text2);margin-top:4px">Result: ${wcResult} ${wcCorrect?'✅':'❌'}</div>`:'<div style="font-size:12px;color:var(--text3)">Pending</div>'}
+      </div>`;
+    }
+    document.getElementById('pd-body').innerHTML=html;
+  }catch(e){
+    document.getElementById('pd-body').innerHTML='<div style="padding:40px;text-align:center;color:var(--red)">Could not load picks.</div>';
+  }
 }
 
 function checkReg(){
@@ -440,8 +525,11 @@ async function doRegister(){
   try{
     const existing=await dbGet('playerPicks/'+uid);
     if(existing){
-      // Player exists — verify password
-      if(existing.pw!==pw){
+      // Player exists — check password
+      if(!existing.pw){
+        // Admin reset their password — allow them to set a new one
+        // Save new password and continue
+      } else if(existing.pw!==pw){
         errEl.textContent='Name or pwd is incorrect. Try again or contact support';
         errEl.style.display='block';
         btn.textContent='Continue to picks';
@@ -450,17 +538,12 @@ async function doRegister(){
       }
       myPicks={...existing.picks};
     } else {
-      // New player — only allowed if group stage entry is NOT locked
-      const lockState=await dbGet('locks')||{};
-      if(lockState['group']){
-        errEl.textContent='Name or pwd is incorrect. Try again or contact support';
-        errEl.style.display='block';
-        btn.textContent='Continue to picks';
-        btn.disabled=false;
-        return;
-      }
-      // Set up default picks for genuinely new player
-      myPicks={};SCHEDULE.forEach(m=>{myPicks[m.id]='Draw';});myPicks['wc_winner']='';
+      // Name not found — never create new players automatically
+      errEl.textContent='Name or pwd is incorrect. Try again or contact support';
+      errEl.style.display='block';
+      btn.textContent='Continue to picks';
+      btn.disabled=false;
+      return;
     }
     koSlots=await dbGet('koSlots')||{};
     koBuilt=await dbGet('r32Built')||false;
