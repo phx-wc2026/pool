@@ -433,13 +433,15 @@ async function viewPlayerDetail(uid,name,rank){
   document.getElementById('pd-body').innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)"><span class="spinner"></span> Loading…</div>';
   go('s-player-detail');
   try{
-    const [ppData,resultsData,leaderboard]=await Promise.all([
+    const [ppData,resultsData,leaderboard,scoresData]=await Promise.all([
       dbGet('playerPicks/'+uid),
       dbGet('results'),
-      dbGet('leaderboard/'+uid)
+      dbGet('leaderboard/'+uid),
+      dbGet('scores')
     ]);
     const picks=(ppData?.picks)||{};
     const results=resultsData||{};
+    const scores=scoresData||{};
     const score=leaderboard?.score||0;
     // Build all matches
     const allM=[...SCHEDULE.map(m=>({...m,round:'group'})),...buildKOMatches(koSlots||{})];
@@ -483,7 +485,11 @@ async function viewPlayerDetail(uid,name,rank){
             </span>
             ${result?`<span>${correct_pick?'✅':'❌'}</span>`:''}
           </div>
-          ${result?`<div style="font-size:11px;color:var(--text3);margin-top:4px">Result: ${result}${correct_pick?' · +'+pts_per+' pt'+(pts_per>1?'s':''):''}</div>`:''}
+          ${result?(()=>{
+            const sc=scores[m.id];
+            const scoreStr=sc&&sc.home!=null&&sc.away!=null?` (${sc.home}–${sc.away})`:'';
+            return `<div style="font-size:11px;color:var(--text3);margin-top:4px">Result: ${result}${scoreStr}${correct_pick?' · +'+pts_per+' pt'+(pts_per>1?'s':''):''}</div>`;
+          })():''}
         </div>`;
       });
     });
