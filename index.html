@@ -425,12 +425,18 @@ async function loadLeaderboard(){
   const todayMatches=SCHEDULE.filter(m=>m.date===todayLabel);
   let todayStr='No matches today';
   if(todayMatches.length){
-    todayStr=todayMatches.map(m=>{
+    const matchStrings=todayMatches.map(m=>{
       const sc=scores[m.id];
       const scoreStr=sc&&sc.home!=null&&sc.away!=null?` ${sc.home}–${sc.away}`:'';
       const short=n=>n.replace('Bosnia-Herzegovina','Bosnia').replace('Saudi Arabia','S.Arabia').replace('South Africa','S.Africa').replace('South Korea','S.Korea').replace('New Zealand','NZ').replace('Ivory Coast','I.Coast').replace('Cape Verde','C.Verde').replace('Congo DR','Congo').replace('Uzbekistan','Uzbek');
       return `${short(m.home)} vs ${short(m.away)}${scoreStr}`;
-    }).join(' | ');
+    });
+    // Group into pairs for 2 per line
+    const lines=[];
+    for(let i=0;i<matchStrings.length;i+=2){
+      lines.push(matchStrings.slice(i,i+2).join(' | '));
+    }
+    todayStr=lines.join('\n');
   }
 
   // Stage from scored count
@@ -467,7 +473,7 @@ async function loadLeaderboard(){
     `<div class="card-sm" style="margin-top:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 14px">
       <div style="flex:1;min-width:0">
         <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.05em;margin-bottom:3px">📅 ${todayLabel.toUpperCase()}</div>
-        <div style="font-size:12px;color:var(--text);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${todayStr}</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6;white-space:pre-line">${todayStr}</div>
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.05em">${stageName}</div>
