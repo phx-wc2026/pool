@@ -30,8 +30,9 @@ body{font-family:'Georgia',serif;background:var(--surface2);color:var(--text);mi
 h1,h2,h3,button,label,input{font-family:'Trebuchet MS',sans-serif}
 .screen{display:none;min-height:100vh;padding-bottom:90px}
 .screen.active{display:block}
-.top-bar{background:var(--green);color:#fff;padding:14px 16px 12px;display:flex;align-items:center;gap:10px}
+.top-bar{background:var(--green);color:#fff;padding:14px 16px 12px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
 .top-bar h1{font-size:16px;font-weight:700;flex:1}
+.leaderboard-sticky-header{position:sticky;top:48px;z-index:99;background:var(--bg);padding-bottom:4px}
 .back-btn{background:rgba(255,255,255,.2);border:none;color:#fff;padding:5px 10px;border-radius:6px;font-size:13px;cursor:pointer}
 .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px}
 .badge-green{background:var(--green-light);color:var(--green)}
@@ -109,6 +110,13 @@ input:focus{border-color:var(--green)}
   <div class="card" style="margin-top:16px;background:var(--green-light);border-color:#a3d9b1">
     <p style="font-weight:700;font-size:14px;line-height:1.5;color:var(--text);margin:0">Welcome. Click "Enter my picks" below, choose a name and password you will remember, and make stage entries by date time shown before it is locked.</p>
   </div>
+
+  <div id="r32-banner" style="display:none;margin:10px 12px 0">
+    <div class="card" style="background:#fff8e6;border-color:#f0c040;padding:12px 14px;cursor:pointer" onclick="go('s-picks')">
+      <div style="font-size:13px;font-weight:700;color:#7a5800" id="r32-banner-text"></div>
+      <div style="font-size:12px;color:#8a6010;margin-top:2px">Tap to go to your picks →</div>
+    </div>
+  </div>
   <div class="card" style="margin-top:12px">
     <div class="pt-rule"><span>Group stage correct pick (Choose by June 10th 10 PM)</span><span class="badge badge-green">1 pt</span></div>
     <div class="pt-rule"><span>Round of 32 correct pick (Choose by June 27th 10 PM)</span><span class="badge badge-green">2 pts</span></div>
@@ -166,8 +174,10 @@ input:focus{border-color:var(--green)}
 <!-- LEADERBOARD -->
 <div id="s-leaderboard" class="screen">
   <div class="top-bar"><button class="back-btn" id="lb-back-btn" onclick="go('s-home')">Back</button><h1>Leaderboard</h1></div>
-  <div class="section-title">Top entries</div>
-  <div id="leaderboard-summary" class="leaderboard-summary" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px 8px"></div>
+  <div class="leaderboard-sticky-header">
+    <div class="section-title">Top entries</div>
+    <div id="leaderboard-summary" class="leaderboard-summary" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px 8px"></div>
+  </div>
   <div id="leaderboard-body"></div>
 </div>
 
@@ -658,10 +668,22 @@ async function doRegister(){
       if(koBuilt) allMatches.push(...buildKOMatches(koSlots));
       if(!koBuilt&&activeRound!=='group') activeRound='group';
       renderRoundTabs();renderPicksForRound(activeRound);
+      updateR32Banner();
     });
   }catch(e){toast('Error loading. Check connection.');}
   btn.textContent='Continue to picks';btn.disabled=false;
 }
+function updateR32Banner(){
+  const banner=document.getElementById('r32-banner');
+  const text=document.getElementById('r32-banner-text');
+  if(!banner||!text) return;
+  if(!koBuilt){banner.style.display='none';return;}
+  // Count how many R32 matches have both teams known
+  const ready=R32_MATCHES?R32_MATCHES.filter(m=>koSlots[`${m.id}_a`]&&koSlots[`${m.id}_b`]).length:0;
+  banner.style.display='block';
+  text.textContent=`🏆 Rd of 32 picks are open — ${ready} of 16 matches ready! Make your picks before they kick off.`;
+}
+
 function groupDone(){return SCHEDULE.every(m=>myPicks[m.id]);}
 
 function renderRoundTabs(){
