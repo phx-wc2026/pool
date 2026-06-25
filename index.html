@@ -376,19 +376,20 @@ const AVATAR_COLORS=[['#e8f5ee','#1a7a4a'],['#e6f1fb','#185fa5'],['#faeeda','#85
 function buildKOMatches(slots){
   const ms=[],s=slots||{};
   const get=k=>s[k]||null;
+  const D={73:'Jun 28',74:'Jun 29',75:'Jun 29',76:'Jun 29',77:'Jun 30',78:'Jun 30',79:'Jun 30',80:'Jul 1',81:'Jul 1',82:'Jul 1',83:'Jul 2',84:'Jul 2',85:'Jul 2',86:'Jul 3',87:'Jul 3',88:'Jul 3',89:'Jul 4',90:'Jul 4',91:'Jul 5',92:'Jul 5',93:'Jul 6',94:'Jul 6',95:'Jul 7',96:'Jul 7',97:'Jul 9',98:'Jul 9',99:'Jul 11',100:'Jul 11',101:'Jul 14',102:'Jul 15',104:'Jul 19'};
   // R32: matches 73-88
-  for(let i=0;i<16;i++) ms.push({id:`r32_${i}`,round:'r32',matchNumber:73+i,home:get(`r32_${i}_a`)||`R32 ${i+1}A`,away:get(`r32_${i}_b`)||`R32 ${i+1}B`,allowDraw:false});
-  // R16: matches 89-96 (order matches FIFA bracket)
+  for(let i=0;i<16;i++) ms.push({id:`r32_${i}`,round:'r32',matchNumber:73+i,date:D[73+i]||'',home:get(`r32_${i}_a`)||`R32 ${i+1}A`,away:get(`r32_${i}_b`)||`R32 ${i+1}B`,allowDraw:false});
+  // R16: matches 89-96
   const r16Numbers=[89,90,91,92,93,94,95,96];
-  for(let i=0;i<8;i++)  ms.push({id:`r16_${i}`,round:'r16',matchNumber:r16Numbers[i],home:get(`r16_${i}_a`)||`R16 ${i+1}A`,away:get(`r16_${i}_b`)||`R16 ${i+1}B`,allowDraw:false});
+  for(let i=0;i<8;i++)  ms.push({id:`r16_${i}`,round:'r16',matchNumber:r16Numbers[i],date:D[r16Numbers[i]]||'',home:get(`r16_${i}_a`)||`R16 ${i+1}A`,away:get(`r16_${i}_b`)||`R16 ${i+1}B`,allowDraw:false});
   // QF: matches 97-100
   const qfNumbers=[97,98,99,100];
-  for(let i=0;i<4;i++)  ms.push({id:`qf_${i}`, round:'qf', matchNumber:qfNumbers[i], home:get(`qf_${i}_a`)||`QF ${i+1}A`,  away:get(`qf_${i}_b`)||`QF ${i+1}B`, allowDraw:false});
+  for(let i=0;i<4;i++)  ms.push({id:`qf_${i}`, round:'qf', matchNumber:qfNumbers[i], date:D[qfNumbers[i]]||'',home:get(`qf_${i}_a`)||`QF ${i+1}A`,  away:get(`qf_${i}_b`)||`QF ${i+1}B`, allowDraw:false});
   // SF: matches 101-102
   const sfNumbers=[101,102];
-  for(let i=0;i<2;i++)  ms.push({id:`sf_${i}`, round:'sf', matchNumber:sfNumbers[i], home:get(`sf_${i}_a`)||`SF ${i+1}A`,  away:get(`sf_${i}_b`)||`SF ${i+1}B`, allowDraw:false});
+  for(let i=0;i<2;i++)  ms.push({id:`sf_${i}`, round:'sf', matchNumber:sfNumbers[i], date:D[sfNumbers[i]]||'',home:get(`sf_${i}_a`)||`SF ${i+1}A`,  away:get(`sf_${i}_b`)||`SF ${i+1}B`, allowDraw:false});
   // Final: match 104
-  ms.push({id:'final_0',round:'final',matchNumber:104,home:get('final_0_a')||'Finalist A',away:get('final_0_b')||'Finalist B',allowDraw:false});
+  ms.push({id:'final_0',round:'final',matchNumber:104,date:D[104]||'',home:get('final_0_a')||'Finalist A',away:get('final_0_b')||'Finalist B',allowDraw:false});
   return ms;
 }
 
@@ -790,12 +791,13 @@ function renderPicksForRound(r){
     const matches=allMatches.filter(m=>m.round===r);
     const info=KO_ROUNDS.find(x=>x.id===r);
     html+=`<div class="round-header">+${info.pts} pts per correct pick</div>`;
-    const ready=matches.length&&!matches.every(m=>m.home.includes('A')||m.home.includes('B'));
-    if(!ready){
+    // Show only matches where both teams are published in koSlots
+    const publishedMatches=matches.filter(m=>koSlots[`${m.id}_a`]&&koSlots[`${m.id}_b`]);
+    if(!publishedMatches.length){
       html+='<div style="padding:24px 16px;text-align:center;font-size:14px;color:var(--text3)">Teams TBD — check back after previous round</div>';
     } else {
-      matches.forEach((m)=>{
-        html+=`<div style="font-size:11px;color:var(--text3);padding:10px 16px 2px">Match ${m.matchNumber}</div>`;
+      publishedMatches.forEach((m)=>{
+        html+=`<div style="font-size:11px;color:var(--text3);padding:10px 16px 2px">Match ${m.matchNumber}${m.date?' · '+m.date:''}</div>`;
         html+=matchHTML(m);
       });
     }
