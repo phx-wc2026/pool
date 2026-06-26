@@ -523,30 +523,38 @@ async function viewPlayerDetail(uid,name,rank){
   document.getElementById('pd-body').innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)"><span class="spinner"></span> Loading…</div>';
   go('s-player-detail');
   try{
-    const [ppData,resultsData,leaderboard,scoresData]=await Promise.all([
+    const [ppData,resultsData,leaderboard,scoresData,visData]=await Promise.all([
       dbGet('playerPicks/'+uid),
       dbGet('results'),
       dbGet('leaderboard/'+uid),
-      dbGet('scores')
+      dbGet('scores'),
+      dbGet('leaderboardVisible')
     ]);
     const picks=(ppData?.picks)||{};
     const results=resultsData||{};
     const scores=scoresData||{};
+    const leaderboardVisible=visData||{};
     const score=leaderboard?.score||0;
     // Build all matches
     const allM=[...SCHEDULE.map(m=>({...m,round:'group'})),...buildKOMatches(koSlots||{})];
     const STAGE_LABELS={group:'Group',r32:'Rd of 32',r16:'Rd of 16',qf:'Quarters',sf:'Semis',final:'Final'};
     const ROUND_PTS_MAP={group:1,r32:2,r16:3,qf:4,sf:5,final:6};
-    // Reverse order: WC winner first, then most current KO stage down to group
-    const stages=['final','sf','qf','r16','r32','group'];
+    // Only show picks for stages admin has released to leaderboard
+    const stages=['final','sf','qf','r16','r32','group'].filter(s=>leaderboardVisible[s]);
     let html=`<div class="card" style="margin:12px 12px 0;background:var(--green-light);border-color:#a3d9b1">
       <div style="display:flex;align-items:center;gap:10px">
         <div style="font-size:28px;font-weight:700;color:var(--green)">#${rank}</div>
         <div><div style="font-size:16px;font-weight:700">${name}</div>
         <div style="font-size:13px;color:var(--text2)">${score} pts total</div></div>
       </div></div>`;
-    // WC Winner at top
-    const wcPickTop=picks['wc_winner'];
+
+    if(!stages.length){
+      html+=`<div style="padding:32px 16px;text-align:center;color:var(--text3);font-size:14px">Picks are hidden until admin releases them to the leaderboard.</div>`;
+      document.getElementById('pd-body').innerHTML=html;
+      return;
+    }
+    // WC Winner at top — only visible once group picks are released to leaderboard
+    const wcPickTop=leaderboardVisible['group']?picks['wc_winner']:null;
     const wcResultTop=results['wc_winner'];
     const wcCorrectTop=wcResultTop&&wcPickTop===wcResultTop;
     if(wcPickTop){
