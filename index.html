@@ -422,46 +422,82 @@ async function loadLeaderboard(){
   const now=new Date();
   const todayLabel=`${months[now.getMonth()]} ${now.getDate()}`;
 
-  const [entries, resultsData, allPicks, scoresData] = await Promise.all([
+  const [entries, resultsData, allPicks, scoresData, koResultsData, koSlotsData] = await Promise.all([
     dbGet('leaderboard'),
     dbGet('results'),
     dbGet('playerPicks'),
-    dbGet('scores')
+    dbGet('scores'),
+    dbGet('koResults'),
+    dbGet('koSlots')
   ]);
   const results=resultsData||{};
   const scores=scoresData||{};
   const allPicksData=allPicks||{};
+  const koResults=koResultsData||{};
+  const koSlotsSnap=koSlotsData||{};
 
-  // Today's matches with scores
-  const todayMatches=SCHEDULE.filter(m=>m.date===todayLabel);
+  const short=n=>n.replace('Bosnia-Herzegovina','Bosnia').replace('Saudi Arabia','S.Arabia')
+    .replace('South Africa','S.Africa').replace('South Korea','S.Korea')
+    .replace('New Zealand','NZ').replace('Ivory Coast','I.Coast')
+    .replace('Cape Verde','C.Verde').replace('Congo DR','Congo')
+    .replace('Uzbekistan','Uzbek').replace('Bosnia-Herzegovina','Bosnia');
+
+  // Today's matches — group + published KO matches
+  const KO_DATES={73:'Jun 28',74:'Jun 29',75:'Jun 29',76:'Jun 29',77:'Jun 30',78:'Jun 30',79:'Jun 30',
+    80:'Jul 1',81:'Jul 1',82:'Jul 1',83:'Jul 2',84:'Jul 2',85:'Jul 2',
+    86:'Jul 3',87:'Jul 3',88:'Jul 3',89:'Jul 4',90:'Jul 4',91:'Jul 5',92:'Jul 5',
+    93:'Jul 6',94:'Jul 6',95:'Jul 7',96:'Jul 7',97:'Jul 9',98:'Jul 9',
+    99:'Jul 11',100:'Jul 11',101:'Jul 14',102:'Jul 15',104:'Jul 19'};
+
+  const matchStrings=[];
+
+  // Group matches today
+  SCHEDULE.filter(m=>m.date===todayLabel).forEach(m=>{
+    const sc=scores[m.id];
+    const scoreStr=sc&&sc.home!=null&&sc.away!=null?` ${sc.home}–${sc.away}`:'';
+    matchStrings.push(`${short(m.home)} vs ${short(m.away)}${scoreStr}`);
+  });
+
+  // KO matches today (only published ones — both slots in koSlots)
+  const koToday=allMatches.filter(m=>
+    m.round!=='group' &&
+    KO_DATES[m.matchNumber]===todayLabel &&
+    koSlotsSnap[`${m.id}_a`] && koSlotsSnap[`${m.id}_b`]
+  );
+  koToday.forEach(m=>{
+    const winner=koResults[m.id];
+    const resultStr=winner?` → ${short(winner)}`:'';
+    matchStrings.push(`${short(m.home)} vs ${short(m.away)}${resultStr}`);
+  });
+
   let todayStr='No matches today';
-  if(todayMatches.length){
-    const matchStrings=todayMatches.map(m=>{
-      const sc=scores[m.id];
-      const scoreStr=sc&&sc.home!=null&&sc.away!=null?` ${sc.home}–${sc.away}`:'';
-      const short=n=>n.replace('Bosnia-Herzegovina','Bosnia').replace('Saudi Arabia','S.Arabia').replace('South Africa','S.Africa').replace('South Korea','S.Korea').replace('New Zealand','NZ').replace('Ivory Coast','I.Coast').replace('Cape Verde','C.Verde').replace('Congo DR','Congo').replace('Uzbekistan','Uzbek');
-      return `${short(m.home)} vs ${short(m.away)}${scoreStr}`;
-    });
-    // Group into pairs for 2 per line
+  if(matchStrings.length){
     const lines=[];
-    for(let i=0;i<matchStrings.length;i+=2){
-      lines.push(matchStrings.slice(i,i+2).join(' | '));
-    }
+    for(let i=0;i<matchStrings.length;i+=2) lines.push(matchStrings.slice(i,i+2).join(' | '));
     todayStr=lines.join('\n');
   }
 
-  // Stage from scored count
+  // Stage: determined by highest round with published bracket slots
   const totalMatches=103;
-  const scored=Object.keys(results).filter(k=>k!=='wc_winner').length;
-  function getStageName(n){
-    if(n<=72) return 'Group';
-    if(n<=88) return 'Rd of 32';
-    if(n<=96) return 'Rd of 16';
-    if(n<=100) return 'Quarters';
-    if(n<=102) return 'Semis';
-    return 'Final';
+  const groupScored=Object.keys(results).filter(k=>k!=='wc_winner').length;
+  const koScored=Object.keys(koResults).length;
+
+  // Determine current stage from published koSlots (what players are currently picking)
+  let stageName='Group', stageCount=groupScored, stagePrefix='';
+  if(Object.keys(koSlotsSnap).some(k=>k.startsWith('final_'))){
+    stageName='Final'; stageCount=koScored-(Object.keys(koResults).filter(k=>k.startsWith('final_')).length?0:0);
+    stagePrefix=`72+`;
+  } else if(Object.keys(koSlotsSnap).some(k=>k.startsWith('sf_'))){
+    stageName='Semis'; stagePrefix=`72+`;
+  } else if(Object.keys(koSlotsSnap).some(k=>k.startsWith('qf_'))){
+    stageName='Quarters'; stagePrefix=`72+`;
+  } else if(Object.keys(koSlotsSnap).some(k=>k.startsWith('r16_'))){
+    stageName='Rd of 16'; stagePrefix=`72+`;
+  } else if(Object.keys(koSlotsSnap).some(k=>k.startsWith('r32_'))){
+    stageName='Rd of 32'; stagePrefix=`72+`;
   }
-  const stageName=getStageName(scored);
+  const displayCount=stagePrefix?`72+${koScored}`:String(groupScored);
+  const scored=groupScored+koScored;
 
   const arr=Object.entries(entries||{}).map(([uid,p])=>({uid,name:p.name||'Unknown',score:p.score||0})).sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
 
@@ -488,7 +524,7 @@ async function loadLeaderboard(){
       </div>
       <div style="text-align:right;flex-shrink:0">
         <div style="font-size:10px;color:var(--text3);font-weight:700;letter-spacing:.05em">${stageName}</div>
-        <div style="font-size:15px;font-weight:700">${scored}<span style="font-size:11px;font-weight:400;color:var(--text3)">/${totalMatches}</span></div>
+        <div style="font-size:15px;font-weight:700">${displayCount}<span style="font-size:11px;font-weight:400;color:var(--text3)">/${totalMatches}</span></div>
       </div>
     </div>`;
 
