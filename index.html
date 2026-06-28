@@ -458,13 +458,12 @@ async function loadLeaderboard(){
     matchStrings.push(`${short(m.home)} vs ${short(m.away)}${scoreStr}`);
   });
 
-  // KO matches today (only published ones — both slots in koSlots)
-  const koToday=allMatches.filter(m=>
-    m.round!=='group' &&
+  // KO matches today — build directly from freshly-loaded koSlots (don't rely on global allMatches)
+  const koMatchesToday=buildKOMatches(koSlotsSnap).filter(m=>
     KO_DATES[m.matchNumber]===todayLabel &&
     koSlotsSnap[`${m.id}_a`] && koSlotsSnap[`${m.id}_b`]
   );
-  koToday.forEach(m=>{
+  koMatchesToday.forEach(m=>{
     const winner=koResults[m.id];
     const resultStr=winner?` → ${short(winner)}`:'';
     matchStrings.push(`${short(m.home)} vs ${short(m.away)}${resultStr}`);
@@ -559,20 +558,26 @@ async function viewPlayerDetail(uid,name,rank){
   document.getElementById('pd-body').innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)"><span class="spinner"></span> Loading…</div>';
   go('s-player-detail');
   try{
-    const [ppData,resultsData,leaderboard,scoresData,visData]=await Promise.all([
+    const [ppData,resultsData,leaderboard,scoresData,visData,koSlotsData,koResultsData]=await Promise.all([
       dbGet('playerPicks/'+uid),
       dbGet('results'),
       dbGet('leaderboard/'+uid),
       dbGet('scores'),
-      dbGet('leaderboardVisible')
+      dbGet('leaderboardVisible'),
+      dbGet('koSlots'),
+      dbGet('koResults')
     ]);
     const picks=(ppData?.picks)||{};
     const results=resultsData||{};
     const scores=scoresData||{};
     const leaderboardVisible=visData||{};
+    const freshKoSlots=koSlotsData||{};
+    const koResultsMap=koResultsData||{};
+    // Merge group + KO results for correct pick checking
+    const allResults={...results,...koResultsMap};
     const score=leaderboard?.score||0;
-    // Build all matches
-    const allM=[...SCHEDULE.map(m=>({...m,round:'group'})),...buildKOMatches(koSlots||{})];
+    // Build all matches using fresh koSlots so team names are always current
+    const allM=[...SCHEDULE.map(m=>({...m,round:'group'})),...buildKOMatches(freshKoSlots)];
     const STAGE_LABELS={group:'Group',r32:'Rd of 32',r16:'Rd of 16',qf:'Quarters',sf:'Semis',final:'Final'};
     const ROUND_PTS_MAP={group:1,r32:2,r16:3,qf:4,sf:5,final:6};
     // Only show picks for stages admin has released to leaderboard
@@ -606,12 +611,12 @@ async function viewPlayerDetail(uid,name,rank){
       const stagePicks=stageMatches.filter(m=>picks[m.id]);
       if(!stagePicks.length) return;
       const pts_per=ROUND_PTS_MAP[stage]||1;
-      const correct=stagePicks.filter(m=>results[m.id]&&picks[m.id]===results[m.id]).length;
-      const total=stagePicks.filter(m=>results[m.id]).length;
+      const correct=stagePicks.filter(m=>allResults[m.id]&&picks[m.id]===allResults[m.id]).length;
+      const total=stagePicks.filter(m=>allResults[m.id]).length;
       html+=`<div class="section-title" style="padding:12px 12px 4px">${STAGE_LABELS[stage]||stage} <span style="font-size:11px;color:var(--text3);font-weight:400">${pts_per} pt${pts_per>1?'s':''} each · ${correct}/${total} correct</span></div>`;
       stageMatches.forEach(m=>{
         const pick=picks[m.id];
-        const result=results[m.id];
+        const result=allResults[m.id];
         const correct_pick=result&&pick===result;
         const wrong_pick=result&&pick&&pick!==result;
         if(!pick) return;
@@ -620,8 +625,9 @@ async function viewPlayerDetail(uid,name,rank){
         let bg='var(--surface)';let border='var(--border)';
         if(correct_pick){bg='var(--green-light)';border='#a3d9b1';}
         else if(wrong_pick){bg='var(--gold-light)';border='#e8d49a';}
+        const matchLabel=m.round==='group'?`Group ${m.group||''}`:(STAGE_LABELS[m.round]||m.round);
         html+=`<div class="card" style="margin:4px 12px;background:${bg};border-color:${border};padding:10px 14px">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Match ${m.matchNumber} · Group ${m.group||''} </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">Match ${m.matchNumber} · ${matchLabel}</div>
           <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
             <span style="font-size:13px;${isHome?'font-weight:700;color:var(--blue)':''}">${hFlag?`<span style="font-size:14px">${hFlag}</span> `:''}${m.home}</span>
             <span style="color:var(--text3);font-size:12px">vs</span>
