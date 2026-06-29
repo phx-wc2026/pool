@@ -64,6 +64,15 @@ input:focus{border-color:var(--green)}
 .tab-row{display:flex;gap:4px;padding:6px 12px;overflow-x:auto;white-space:nowrap}
 .tab{padding:5px 12px;font-size:12px;font-weight:700;border-radius:20px;border:1.5px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;flex-shrink:0}
 .tab.active{background:var(--green);color:#fff;border-color:var(--green)}
+.bkc{background:var(--surface);border:1px solid var(--border2);border-radius:6px;padding:5px 7px;width:100%;box-sizing:border-box}
+.bkc-done{border-color:var(--green);background:#f4fbf6}
+.bkc-tbd{opacity:.4;border-style:dashed}
+.bkc-n{font-size:9px;color:var(--text3);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bkc-t{font-size:12px;padding:2px 0;display:flex;align-items:center;gap:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.bkc-w{font-weight:700;color:var(--green)}
+.bkc-x{opacity:.35;text-decoration:line-through}
+.bkc-final{border-width:2px;border-color:#c8a000!important;background:#fffbeb!important}
+.bkc-final .bkc-t{font-size:13px}
 .lb-row{display:flex;align-items:center;padding:11px 16px;border-bottom:1px solid var(--border);gap:10px}
 .leaderboard-row{display:flex;align-items:center;padding:12px 16px;border-bottom:1px solid var(--border);gap:10px}
 .leaderboard-row:last-child{border-bottom:none}
@@ -171,9 +180,18 @@ input:focus{border-color:var(--green)}
   </div>
 </div>
 
+<!-- BRACKET -->
+<div id="s-bracket" class="screen">
+  <div class="top-bar" style="display:flex;align-items:center;gap:10px">
+    <button class="back-btn" onclick="go('s-leaderboard')">Back</button>
+    <span style="font-size:15px;font-weight:700">🏆 Knockout Bracket</span>
+  </div>
+  <div id="bracket-body" style="flex:1;overflow:hidden"></div>
+</div>
+
 <!-- LEADERBOARD -->
 <div id="s-leaderboard" class="screen">
-  <div class="top-bar"><button class="back-btn" id="lb-back-btn" onclick="go('s-home')">Back</button><h1>Leaderboard</h1></div>
+  <div class="top-bar" style="display:flex;align-items:center;gap:8px"><button class="back-btn" id="lb-back-btn" onclick="go('s-home')">Back</button><h1 style="flex:1">Leaderboard</h1><button id="view-bracket-btn" onclick="showBracket()" style="display:none;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.5);color:#fff;border-radius:20px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">View Bracket</button></div>
   <div class="leaderboard-sticky-header">
     <div class="section-title">Top entries</div>
     <div id="leaderboard-summary" class="leaderboard-summary" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;padding:0 12px 8px"></div>
@@ -394,7 +412,7 @@ function buildKOMatches(slots){
 }
 
 // ── STATE ─────────────────────────────────────────────────────
-let db,auth,currentUser=null,myPicks={},activeRound='group',allMatches=[],lbUnsub=null,locks={},results={},koSlots={},koBuilt=false;
+let db,auth,currentUser=null,myPicks={},activeRound='group',allMatches=[],lbUnsub=null,locks={},results={},koSlots={},koBuilt=false,koResultsGlobal={};
 
 firebase.initializeApp(firebaseConfig);
 db=firebase.database();
@@ -406,7 +424,7 @@ async function dbSet(p,v){await dbRef(p).set(v);}
 // Sign in anonymously — transparent to user, gives each device a unique UID
 auth.signInAnonymously().catch(e=>console.error('Auth error:',e));
 
-function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);if(id==='s-leaderboard') loadLeaderboard();if(id==='s-admin') adminPopulateMatches();}
+function go(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');window.scrollTo(0,0);if(id==='s-leaderboard'){loadLeaderboard();updateR32Banner();}if(id==='s-admin') adminPopulateMatches();}
 
 // Open leaderboard and remember where to return when Back is pressed
 function openLeaderboardFrom(origin){
@@ -417,7 +435,102 @@ function openLeaderboardFrom(origin){
 function toast(msg,dur=2500){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),dur);}
 function safeId(s){return s.trim().toLowerCase().replace(/[^a-z0-9_-]/g,'_');}
 
+async function showBracket(){
+  go('s-bracket');
+  renderBracket();
+}
+
+async function renderBracket(){
+  const el=document.getElementById('bracket-body');
+  if(el) el.innerHTML='<div style="padding:40px;text-align:center;color:var(--text3)">Loading bracket…</div>';
+
+  const [ksr,krr]=await Promise.all([dbGet('koSlots'),dbGet('koResults')]);
+  const S=ksr||{};
+  const KR=krr||{};
+
+  const DATES={73:'Jun 28',74:'Jun 29',75:'Jun 29',76:'Jun 29',77:'Jun 30',78:'Jun 30',79:'Jun 30',
+    80:'Jul 1',81:'Jul 1',82:'Jul 1',83:'Jul 2',84:'Jul 2',85:'Jul 2',
+    86:'Jul 3',87:'Jul 3',88:'Jul 3',89:'Jul 4',90:'Jul 4',91:'Jul 5',92:'Jul 5',
+    93:'Jul 6',94:'Jul 6',95:'Jul 7',96:'Jul 7',97:'Jul 9',98:'Jul 9',
+    99:'Jul 11',100:'Jul 11',101:'Jul 14',102:'Jul 15',104:'Jul 19'};
+
+  const SH=n=>n?n.replace('Bosnia-Herzegovina','Bosnia').replace('Saudi Arabia','S.Arabia')
+    .replace('South Africa','S.Africa').replace('South Korea','S.Korea')
+    .replace('New Zealand','NZ').replace('Ivory Coast','I.Coast')
+    .replace('Cape Verde','C.Verde').replace('Congo DR','Congo')
+    .replace('Uzbekistan','Uzbek'):null;
+
+  // Map each KO match to its two feeder matches
+  // Allows showing partial bracket when only one feeder result is in
+  const FEEDERS={
+    r16_0:{a:'r32_1',b:'r32_4'}, r16_1:{a:'r32_0',b:'r32_2'},
+    r16_2:{a:'r32_3',b:'r32_6'}, r16_3:{a:'r32_5',b:'r32_7'},
+    r16_4:{a:'r32_10',b:'r32_11'}, r16_5:{a:'r32_8',b:'r32_9'},
+    r16_6:{a:'r32_12',b:'r32_14'}, r16_7:{a:'r32_13',b:'r32_15'},
+    qf_0:{a:'r16_0',b:'r16_1'}, qf_1:{a:'r16_2',b:'r16_3'},
+    qf_2:{a:'r16_4',b:'r16_5'}, qf_3:{a:'r16_6',b:'r16_7'},
+    sf_0:{a:'qf_0',b:'qf_1'}, sf_1:{a:'qf_2',b:'qf_3'},
+    final_0:{a:'sf_0',b:'sf_1'},
+  };
+
+  // Get team for a slot: published koSlots first, then fall back to koResults cascade
+  function getTeam(matchId, side){
+    const published=S[`${matchId}_${side}`];
+    if(published) return published;
+    const feeder=FEEDERS[matchId];
+    if(!feeder) return null;
+    return KR[feeder[side]]||null; // winner of the feeder match
+  }
+
+  function card(id,num,isFinal=false){
+    const rawH=getTeam(id,'a'), rawA=getTeam(id,'b'), rawW=KR[id]||null;
+    const h=SH(rawH), a=SH(rawA), w=SH(rawW);
+    const pub=!!(rawH||rawA), done=!!rawW; // show card if at least one team known
+    const fh=rawH?(FLAGS[rawH]||''):'', fa=rawA?(FLAGS[rawA]||''):'';
+    const hw=done&&w===h, aw=done&&w===a;
+    const date=DATES[num]||'';
+    return `<div class="bkc${done?' bkc-done':!pub?' bkc-tbd':''}${isFinal?' bkc-final':''}">
+      <div class="bkc-n">M${num}${date?' · '+date:''}</div>
+      <div class="bkc-t${hw?' bkc-w':done&&!hw?' bkc-x':''}">${fh} ${h||'⏳ TBD'}</div>
+      <div class="bkc-t${aw?' bkc-w':done&&!aw?' bkc-x':''}">${fa} ${a||'⏳ TBD'}</div>
+    </div>`;
+  }
+
+  // [matchId, matchNum, col(1-9), startRow(1-16), rowspan, isFinal]
+  const ITEMS=[
+    ['r32_1',74,1,1,1],['r32_4',77,1,2,1],['r32_0',73,1,3,1],['r32_2',75,1,4,1],
+    ['r32_3',76,1,5,1],['r32_6',79,1,6,1],['r32_5',78,1,7,1],['r32_7',80,1,8,1],
+    ['r16_0',89,2,1,2],['r16_1',90,2,3,2],['r16_2',91,2,5,2],['r16_3',92,2,7,2],
+    ['qf_0',97,3,1,4],['qf_1',98,3,5,4],
+    ['sf_0',101,4,1,8],
+    ['final_0',104,5,1,16,true],
+    ['sf_1',102,6,9,8],
+    ['qf_2',99,7,9,4],['qf_3',100,7,13,4],
+    ['r16_4',93,8,9,2],['r16_5',94,8,11,2],['r16_6',95,8,13,2],['r16_7',96,8,15,2],
+    ['r32_10',83,9,9,1],['r32_11',84,9,10,1],['r32_8',81,9,11,1],['r32_9',82,9,12,1],
+    ['r32_12',85,9,13,1],['r32_14',87,9,14,1],['r32_13',86,9,15,1],['r32_15',88,9,16,1],
+  ];
+
+  const CW=158, RH=68;
+  const HDRS=['Rd of 32','Rd of 16','Quarters','Semis','Final','Semis','Quarters','Rd of 16','Rd of 32'];
+
+  const hdrHtml=`<div style="display:grid;grid-template-columns:repeat(9,${CW}px);gap:2px 5px;margin-bottom:5px">
+    ${HDRS.map(h=>`<div style="text-align:center;font-size:9px;font-weight:700;color:var(--text3);letter-spacing:.06em;text-transform:uppercase">${h}</div>`).join('')}
+  </div>`;
+
+  const gridHtml=`<div style="display:grid;grid-template-columns:repeat(9,${CW}px);grid-template-rows:repeat(16,${RH}px);gap:2px 5px">
+    ${ITEMS.map(([id,num,col,row,rs,fin])=>
+      `<div style="grid-column:${col};grid-row:${row}/span ${rs};display:flex;align-items:center;padding:1px 0">${card(id,num,!!fin)}</div>`
+    ).join('')}
+  </div>`;
+
+  if(el) el.innerHTML=`<div style="overflow-x:auto;padding:20px 10px 24px;-webkit-overflow-scrolling:touch">
+    <div style="min-width:${9*CW+8*5}px">${hdrHtml}${gridHtml}</div>
+  </div>`;
+}
+
 async function loadLeaderboard(){
+  updateR32Banner(); // ensure View Bracket button reflects current koBuilt state
   const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   const now=new Date();
   const todayLabel=`${months[now.getMonth()]} ${now.getDate()}`;
@@ -435,6 +548,9 @@ async function loadLeaderboard(){
   const allPicksData=allPicks||{};
   const koResults=koResultsData||{};
   const koSlotsSnap=koSlotsData||{};
+  // Show bracket button if any R32 slots are published
+  const bracketBtn=document.getElementById('view-bracket-btn');
+  if(bracketBtn) bracketBtn.style.display=Object.keys(koSlotsSnap).some(k=>k.startsWith('r32_'))?'block':'none';
 
   const short=n=>n.replace('Bosnia-Herzegovina','Bosnia').replace('Saudi Arabia','S.Arabia')
     .replace('South Africa','S.Africa').replace('South Korea','S.Korea')
@@ -713,6 +829,7 @@ async function doRegister(){
       if(!koBuilt&&activeRound!=='group') activeRound='group';
       renderRoundTabs();renderPicksForRound(activeRound);
     });
+    dbRef('koResults').on('value',snap=>{ koResultsGlobal=snap.val()||{}; });
     dbRef('r32Built').on('value',snap=>{
       koBuilt=snap.val()||false;
       allMatches=[...SCHEDULE.map(m=>({...m,round:'group',allowDraw:true}))];
@@ -780,14 +897,8 @@ window.addEventListener('DOMContentLoaded', async ()=>{
 });
 
 function updateR32Banner(){
-  const banner=document.getElementById('r32-banner');
-  const text=document.getElementById('r32-banner-text');
-  if(!banner||!text) return;
-  if(!koBuilt){banner.style.display='none';return;}
-  // Count how many R32 matches have both teams known
-  const ready=R32_MATCHES?R32_MATCHES.filter(m=>koSlots[`${m.id}_a`]&&koSlots[`${m.id}_b`]).length:0;
-  banner.style.display='block';
-  text.textContent=`🏆 Rd of 32 picks are open — ${ready} of 16 matches ready! Make your picks before they kick off.`;
+  const btn=document.getElementById('view-bracket-btn');
+  if(btn) btn.style.display=koBuilt?'block':'none';
 }
 
 function groupDone(){return SCHEDULE.every(m=>myPicks[m.id]);}
