@@ -740,10 +740,12 @@ async function loadHomeContent(){
         ? `<span class="badge ${BADGE[line.badgeColor]||'badge-green'}">${line.badge}</span>`
         : '';
       const style = (isLast||line.noRule)?'border:none':'';
-      const textStyle = line.isFooter?'margin-top:10px;font-size:12px;color:var(--text3)':'';
+      const currentStyle = line.isCurrent
+        ? `font-weight:700;font-size:${Math.round(fs*1.14)}px;color:var(--text)`
+        : '';
       return line.isFooter
-        ? `<div style="${textStyle}">${line.text}</div>`
-        : `<div class="pt-rule" style="${style}"><span>${line.text}</span>${badge}</div>`;
+        ? `<div style="margin-top:10px;font-size:12px;color:var(--text3)">${line.text}</div>`
+        : `<div class="pt-rule" style="${style}${currentStyle?';'+currentStyle:''}"><span>${line.text}</span>${badge}</div>`;
     }).join('');
   }catch(e){ /* keep hardcoded */ }
 }
@@ -769,9 +771,10 @@ window.addEventListener('DOMContentLoaded', async ()=>{
       const isLast=i===content.lines.length-1;
       const badge=line.badge?`<span class="badge ${BADGE[line.badgeColor]||'badge-green'}">${line.badge}</span>`:'';
       const style=(isLast||line.noRule)?'border:none':'';
+      const currentStyle=line.isCurrent?`font-weight:700;font-size:${Math.round(fs*1.14)}px;color:var(--text)`:'';
       return line.isFooter
         ?`<div style="margin-top:10px;font-size:12px;color:var(--text3)">${line.text}</div>`
-        :`<div class="pt-rule" style="${style}"><span>${line.text}</span>${badge}</div>`;
+        :`<div class="pt-rule" style="${style}${currentStyle?';'+currentStyle:''}"><span>${line.text}</span>${badge}</div>`;
     }).join('');
   }catch(e){}
 });
