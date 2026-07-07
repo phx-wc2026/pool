@@ -1131,9 +1131,11 @@ async function submitPicks(){
   btn.innerHTML='<span class="spinner"></span>Saving...';btn.disabled=true;
   try{
     const results=await dbGet('results')||{};
+    const koResults=await dbGet('koResults')||{};
+    const allResults={...results,...koResults};
     let score=0;
-    allMatches.forEach(m=>{const r=results[m.id];if(r&&myPicks[m.id]===r)score+=ROUND_PTS[m.round]||1;});
-    if(myPicks['wc_winner']&&results['wc_winner']===myPicks['wc_winner'])score+=getWCWinnerPts(myPicks['wc_winner']);
+    allMatches.forEach(m=>{const r=allResults[m.id];if(r&&myPicks[m.id]===r)score+=ROUND_PTS[m.round]||1;});
+    if(myPicks['wc_winner']&&allResults['wc_winner']===myPicks['wc_winner'])score+=getWCWinnerPts(myPicks['wc_winner']);
     // Write public data (name + score) to leaderboard — readable by everyone
     await dbSet('leaderboard/'+currentUser.uid,{name:currentUser.name,score,updatedAt:Date.now()});
     // Store pw with picks so player can log in from any device
