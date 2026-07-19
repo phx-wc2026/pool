@@ -1135,7 +1135,8 @@ async function submitPicks(){
     const allResults={...results,...koResults};
     let score=0;
     allMatches.forEach(m=>{const r=allResults[m.id];if(r&&myPicks[m.id]===r)score+=ROUND_PTS[m.round]||1;});
-    if(myPicks['wc_winner']&&allResults['wc_winner']===myPicks['wc_winner'])score+=getWCWinnerPts(myPicks['wc_winner']);
+    const wcW=allResults['wc_winner']||allResults['final_0'];
+if(wcW&&myPicks['wc_winner']===wcW)score+=getWCWinnerPts(wcW);
     // Write public data (name + score) to leaderboard — readable by everyone
     await dbSet('leaderboard/'+currentUser.uid,{name:currentUser.name,score,updatedAt:Date.now()});
     // Store pw with picks so player can log in from any device
@@ -1195,7 +1196,8 @@ async function buildKOStage(){
         // Recalculate score (only group picks count now until results come in)
         let score=0;
         SCHEDULE.forEach(m=>{if(results[m.id]&&newPicks[m.id]===results[m.id])score+=1;});
-        if(newPicks['wc_winner']&&results['wc_winner']===newPicks['wc_winner'])score+=getWCWinnerPts(newPicks['wc_winner']);
+        const wcW2=results['wc_winner']||results['final_0'];
+if(wcW2&&newPicks['wc_winner']===wcW2)score+=getWCWinnerPts(wcW2);
         await Promise.all([
           dbSet('leaderboard/'+uid,{name:p.name,score,updatedAt:Date.now()}),
           dbSet('playerPicks/'+uid,{picks:newPicks,updatedAt:Date.now()})
@@ -1320,7 +1322,8 @@ async function adminSaveResult(){
       if(p&&p.picks){
         let score=0;
         allMatches.forEach(m=>{const r=results[m.id];if(r&&p.picks[m.id]===r)score+=ROUND_PTS[m.round]||1;});
-        if(p.picks['wc_winner']&&results['wc_winner']===p.picks['wc_winner'])score+=getWCWinnerPts(p.picks['wc_winner']);
+        const wcW3=results['wc_winner']||results['final_0'];
+if(wcW3&&p.picks['wc_winner']===wcW3)score+=getWCWinnerPts(wcW3);
         await dbSet('leaderboard/'+uid+'/score',score);
       }
     }
